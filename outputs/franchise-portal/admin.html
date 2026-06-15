@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Админка базы знаний</title>
+    <link rel="stylesheet" href="./admin.css" />
+  </head>
+  <body>
+    <main class="admin-shell">
+      <aside class="admin-sidebar">
+        <header class="admin-brand">
+          <div>
+            <strong>Админка</strong>
+            <span>Статьи и уроки</span>
+          </div>
+          <a class="back-link" href="./index.html">Портал</a>
+        </header>
+
+        <div class="admin-search">
+          <span aria-hidden="true">⌕</span>
+          <input id="adminSearch" type="search" placeholder="Поиск по дереву..." />
+        </div>
+
+        <div class="admin-actions">
+          <button class="primary-action" id="newArticleAdmin" type="button">Новая статья</button>
+          <button class="secondary-action" id="newLessonMaterialAdmin" type="button">Материал урока</button>
+        </div>
+
+        <nav class="content-tree" id="contentTree" aria-label="Дерево материалов"></nav>
+      </aside>
+
+      <section class="admin-main">
+        <header class="admin-topbar">
+          <div>
+            <p class="eyebrow">Редактирование</p>
+            <h1 id="formHeading">Новая статья</h1>
+          </div>
+          <div class="topbar-actions">
+            <button class="secondary-action" id="previewToggle" type="button">Предпросмотр</button>
+            <button class="primary-action" id="saveContent" type="button">Сохранить</button>
+          </div>
+        </header>
+
+        <section class="editor-grid">
+          <form class="admin-form" id="adminForm">
+            <div class="form-row">
+              <label>
+                Заголовок
+                <input id="adminTitle" required />
+              </label>
+              <label>
+                Раздел
+                <input id="adminCategory" required />
+              </label>
+            </div>
+
+            <fieldset class="lesson-box">
+              <legend>Урок</legend>
+              <label class="checkbox-line">
+                <input id="adminIsLesson" type="checkbox" />
+                Материал относится к уроку
+              </label>
+              <div class="form-row">
+                <label>
+                  Курс
+                  <input id="adminLessonCourse" placeholder="Базовый курс" />
+                </label>
+                <label>
+                  Возраст
+                  <input id="adminLessonAge" placeholder="4-5 лет" />
+                </label>
+                <label>
+                  Название урока
+                  <input id="adminLessonTitle" placeholder="Вводный урок" />
+                </label>
+                <label>
+                  Тип материала
+                  <input id="adminMaterialType" placeholder="Сценарий, чеклист, раздатка" />
+                </label>
+                <label>
+                  Порядок
+                  <input id="adminLessonOrder" type="number" min="1" step="1" />
+                </label>
+              </div>
+            </fieldset>
+
+            <div class="tool-row">
+              <label class="file-button">
+                Импорт HTML
+                <input id="adminImportHtml" type="file" accept=".html,.htm,text/html" />
+              </label>
+              <label class="file-button">
+                Добавить картинку
+                <input id="adminImage" type="file" accept="image/*" />
+              </label>
+            </div>
+
+            <label>
+              HTML
+              <textarea id="adminHtml" spellcheck="false"></textarea>
+            </label>
+          </form>
+
+          <article class="preview-pane" id="previewPane" hidden>
+            <div class="preview-frame" id="previewFrame"></div>
+          </article>
+        </section>
+      </section>
+    </main>
+    <script src="./admin.js"></script>
+  </body>
+</html>

@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Франшиза: база знаний</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="login-panel" id="loginPanel" aria-label="Вход">
+        <div class="brand-mark" aria-hidden="true">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <div>
+          <p class="eyebrow">Закрытый портал</p>
+          <h1>База знаний франшизы</h1>
+          <p class="intro">
+            Методики, регламенты, требования к помещению и инструкции в формате защищенных веб-статей.
+          </p>
+        </div>
+
+        <form class="login-card" id="loginForm">
+          <label>
+            Логин
+            <input id="loginInput" name="login" value="owner" autocomplete="username" />
+          </label>
+          <label>
+            Пароль
+            <input id="passwordInput" name="password" type="password" value="1234" autocomplete="current-password" />
+          </label>
+          <button class="primary-button" type="submit">Войти</button>
+          <p class="hint">Демо: owner, methodist, admin, coach. Пароль для всех: 1234.</p>
+        </form>
+
+        <div class="security-list">
+          <div>
+            <strong>Защита от копирования</strong>
+            <span>Выделение, копирование, печать и сохранение блокируются на уровне интерфейса.</span>
+          </div>
+          <div>
+            <strong>Доступы по ролям</strong>
+            <span>Пользователь видит только те материалы, которые ему разрешены.</span>
+          </div>
+          <div>
+            <strong>Поиск без лишнего доступа</strong>
+            <span>Индекс показывает результаты только среди доступных статей.</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="app-panel is-hidden" id="appPanel" aria-label="Портал">
+        <section class="workspace">
+          <header class="app-header">
+            <div class="profile">
+              <div class="avatar" id="avatar">В</div>
+              <div>
+                <strong id="userName">Пользователь</strong>
+                <span id="userRole">Роль</span>
+              </div>
+            </div>
+
+            <details class="admin-menu" id="adminMenu">
+              <summary aria-label="Управление">•••</summary>
+              <nav class="nav-tabs" aria-label="Служебные разделы">
+                <button class="nav-tab is-active" data-view="knowledge" data-title="База знаний" type="button">
+                  База знаний
+                </button>
+                <button class="nav-tab" data-view="access" data-title="Доступы" type="button" data-owner-only>
+                  Доступы
+                </button>
+                <button class="nav-tab" data-view="audit" data-title="Журнал" type="button" data-owner-only>
+                  Журнал
+                </button>
+                <a class="nav-tab" href="./admin.html" data-owner-only>Админка</a>
+              </nav>
+            </details>
+
+            <button class="ghost-button" id="logoutButton" type="button">Выйти</button>
+          </header>
+
+          <header class="toolbar">
+            <div class="mode-row" id="modeRow" aria-label="Тип материалов">
+              <button class="mode-button is-active" data-mode="articles" type="button">Статьи</button>
+              <button class="mode-button" data-mode="lessons" type="button">Уроки</button>
+            </div>
+            <div class="search-wrap">
+              <span aria-hidden="true">⌕</span>
+              <input id="searchInput" type="search" placeholder="Поиск по методикам, регламентам, требованиям..." />
+            </div>
+          </header>
+
+          <section class="view is-active" id="knowledgeView">
+            <div class="category-row" id="categoryRow"></div>
+            <div class="content-grid">
+              <section class="article-list" id="articleList" aria-label="Список статей"></section>
+              <article class="reader" id="reader" aria-label="Статья"></article>
+            </div>
+          </section>
+
+          <section class="view" id="accessView">
+            <div class="access-grid" id="accessGrid"></div>
+          </section>
+
+          <section class="view" id="auditView">
+            <div class="audit-layout">
+              <div>
+                <h3>События</h3>
+                <p class="muted">В демо журнал хранится в браузере. В реальной версии он будет писаться на сервер.</p>
+              </div>
+              <div class="audit-list" id="auditList"></div>
+            </div>
+          </section>
+
+          <section class="view" id="editorView">
+            <div class="editor-layout">
+              <aside class="editor-list" id="editorList" aria-label="Статьи для редактирования"></aside>
+              <form class="editor-form" id="editorForm">
+                <div class="editor-head">
+                  <div>
+                    <p class="eyebrow">HTML-редактор</p>
+                    <h3 id="editorHeading">Новая статья</h3>
+                  </div>
+                  <button class="primary-button" type="submit">Сохранить</button>
+                </div>
+
+                <div class="form-grid editor-main-fields">
+                  <label>
+                    Заголовок
+                    <input id="editorTitle" required />
+                  </label>
+                  <label>
+                    Раздел
+                    <input id="editorCategory" required />
+                  </label>
+                </div>
+
+                <details class="lesson-settings" id="lessonSettings">
+                  <summary>Привязка к уроку</summary>
+                  <label class="lesson-toggle">
+                    <input id="editorIsLesson" type="checkbox" />
+                    Это материал урока
+                  </label>
+                  <div class="form-grid">
+                    <label>
+                      Курс
+                      <input id="editorLessonCourse" placeholder="Базовый курс" />
+                    </label>
+                    <label>
+                      Возраст
+                      <input id="editorLessonAge" placeholder="4-5 лет" />
+                    </label>
+                    <label>
+                      Название урока
+                      <input id="editorLessonTitle" placeholder="Вводный урок" />
+                    </label>
+                    <label>
+                      Тип материала
+                      <input id="editorMaterialType" placeholder="Сценарий, чеклист, раздатка" />
+                    </label>
+                    <label>
+                      Порядок
+                      <input id="editorLessonOrder" type="number" min="1" step="1" />
+                    </label>
+                  </div>
+                </details>
+
+                <div class="editor-tools">
+                  <label class="image-picker">
+                    Добавить картинку
+                    <input id="editorImage" type="file" accept="image/*" />
+                  </label>
+                  <label class="image-picker">
+                    Импорт HTML
+                    <input id="editorImportHtml" type="file" accept=".html,.htm,text/html" />
+                  </label>
+                  <button class="ghost-light-button" id="newArticleButton" type="button">Новая статья</button>
+                </div>
+
+                <label>
+                  HTML статьи
+                  <textarea id="editorHtml" spellcheck="false"></textarea>
+                </label>
+              </form>
+            </div>
+          </section>
+        </section>
+      </section>
+    </main>
+    <div class="print-shield" aria-hidden="true">
+      <strong>Печать запрещена</strong>
+      <span>Материал доступен только для защищенного просмотра в портале.</span>
+    </div>
+    <script src="./app.js"></script>
+  </body>
+</html>

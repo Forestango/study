@@ -1,0 +1,9 @@
+.DS_Store
+
+# Local runtime and package caches
+work/
+
+# Install/build output
+**/node_modules/
+**/dist/
+**/*.tsbuildinfo
