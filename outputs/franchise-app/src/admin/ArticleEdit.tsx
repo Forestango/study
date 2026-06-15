@@ -3,7 +3,7 @@ import { useNavigation, useOne } from "@refinedev/core";
 import { Button, Card, Checkbox, Col, Form, Input, InputNumber, Row, Space } from "antd";
 import { useEffect, useMemo, useRef } from "react";
 import { useParams } from "react-router";
-import { getArticles, getImages, setArticles, setImages } from "../data/storage";
+import { getArticlesAsync, getImagesAsync, setArticlesAsync, setImagesAsync } from "../data/storage";
 import { sanitizeHtml, summaryFromHtml } from "../shared/html";
 import type { Article } from "../shared/types";
 
@@ -75,12 +75,12 @@ export function ArticleEdit({ mode }: Props) {
   const insertImageFile = (file?: File) => {
     if (!file) return;
     const reader = new FileReader();
-    reader.addEventListener("load", () => {
+    reader.addEventListener("load", async () => {
       const caption = window.prompt("Подпись к картинке", file.name.replace(/\.[^.]+$/, "")) || "";
       const safeCaption = escapeHtml(caption);
       const id = crypto.randomUUID();
-      const images = getImages();
-      setImages({
+      const images = await getImagesAsync();
+      await setImagesAsync({
         ...images,
         [id]: {
           name: file.name,
@@ -94,8 +94,8 @@ export function ArticleEdit({ mode }: Props) {
     if (imageFileRef.current) imageFileRef.current.value = "";
   };
 
-  const save = (values: ArticleFormValues) => {
-    const articles = getArticles();
+  const save = async (values: ArticleFormValues) => {
+    const articles = await getArticlesAsync();
     const article: Article = {
       ...initialValues,
       ...values,
@@ -118,7 +118,7 @@ export function ArticleEdit({ mode }: Props) {
       delete article.materialType;
     }
 
-    setArticles(record ? articles.map((item) => (item.id === record.id ? article : item)) : [article, ...articles]);
+    await setArticlesAsync(record ? articles.map((item) => (item.id === record.id ? article : item)) : [article, ...articles]);
     list("articles");
   };
 

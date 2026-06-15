@@ -1,10 +1,17 @@
 import { List } from "@refinedev/antd";
 import { Card, Col, Row, Tree, Typography } from "antd";
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
-import { getLessonGroups } from "../data/storage";
+import { getArticlesAsync, getLessonGroups } from "../data/storage";
+import type { LessonGroup } from "../shared/types";
 
 export function LessonTree() {
-  const lessons = getLessonGroups();
+  const [lessons, setLessons] = useState<LessonGroup[]>([]);
+
+  useEffect(() => {
+    getArticlesAsync().then((articles) => setLessons(getLessonGroups(articles)));
+  }, []);
+
   const treeData = Object.entries(
     lessons.reduce<Record<string, Record<string, typeof lessons>>>((acc, lesson) => {
       acc[lesson.course] ||= {};

@@ -1,6 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
-import { ARTICLES_CHANGED_EVENT, IMAGES_CHANGED_EVENT, getArticles, getLessonGroups, isLessonArticle, renderStoredImages } from "../data/storage";
+import {
+  ARTICLES_CHANGED_EVENT,
+  IMAGES_CHANGED_EVENT,
+  getArticles,
+  getArticlesAsync,
+  getImagesAsync,
+  getLessonGroups,
+  isLessonArticle,
+  renderStoredImages,
+} from "../data/storage";
 import { sanitizeHtml } from "../shared/html";
 
 const basePath = import.meta.env.BASE_URL === "/" ? "" : import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -42,13 +51,18 @@ export function PortalApp() {
   }, [articles]);
 
   useEffect(() => {
-    const refreshArticles = () => setArticles(getArticles());
-    const refreshStoredImages = () => refreshImages((value) => value + 1);
+    const refreshArticles = async () => setArticles(await getArticlesAsync());
+    const refreshStoredImages = async () => {
+      await getImagesAsync();
+      refreshImages((value) => value + 1);
+    };
     const handleStorage = (event: StorageEvent) => {
       if (event.key === "franchiseArticles") refreshArticles();
       if (event.key === "franchiseImages") refreshStoredImages();
     };
 
+    refreshArticles();
+    refreshStoredImages();
     window.addEventListener(ARTICLES_CHANGED_EVENT, refreshArticles);
     window.addEventListener(IMAGES_CHANGED_EVENT, refreshStoredImages);
     window.addEventListener("storage", handleStorage);

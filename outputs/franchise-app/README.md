@@ -6,7 +6,7 @@
 
 - `/portal` — пользовательский портал для чтения материалов.
 - `/admin` — админка на Refine + Ant Design.
-- Общий localStorage data layer для прототипа.
+- Общий data layer: Supabase при наличии env-переменных, localStorage как fallback для локального прототипа.
 - Модель материалов поддерживает обычные статьи и материалы уроков.
 
 ## Запуск
@@ -39,4 +39,23 @@ npm run dev
 
 ## Дальше
 
-Следующий шаг — заменить localStorage data provider на настоящий backend API.
+## Общая база через Supabase
+
+Для общего хранилища между браузерами:
+
+1. Создать проект в Supabase.
+2. Открыть SQL Editor и выполнить `supabase.sql`.
+3. В GitHub repo добавить:
+   - `Settings -> Secrets and variables -> Actions -> Variables`
+     - `VITE_SUPABASE_URL` = Project URL.
+   - `Settings -> Secrets and variables -> Actions -> Secrets`
+     - `VITE_SUPABASE_ANON_KEY` = anon public key.
+4. Перезапустить workflow `Deploy franchise app`.
+
+Без этих переменных приложение продолжит работать в localStorage-режиме.
+
+Важно: текущие Supabase policies разрешают публичную запись в одну строку `default`. Это удобно для прототипа на GitHub Pages, но перед реальным запуском нужен auth, роли и серверная проверка прав.
+
+## Дальше
+
+Следующий шаг — добавить авторизацию и разграничить права на серверной стороне.
