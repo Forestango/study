@@ -216,6 +216,22 @@ a {
   border-left: 2px solid #e4ece8;
 }
 
+.lesson-tree-node {
+  display: grid;
+  gap: 8px;
+  padding: 8px 0 4px 10px;
+  border-left: 2px solid #e4ece8;
+}
+
+.lesson-tree-node > strong {
+  color: #172026;
+  font-size: 13px;
+}
+
+.lesson-tree-node-lesson > strong {
+  color: #125341;
+}
+
 .portal-card.material {
   border-left: 4px solid #c28b2c;
 }

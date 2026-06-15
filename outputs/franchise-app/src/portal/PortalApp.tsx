@@ -6,18 +6,20 @@ import {
   getArticles,
   getArticlesAsync,
   getImagesAsync,
-  getLessonGroups,
+  getLessonTreeAsync,
   getStorageStatus,
   isLessonArticle,
   renderStoredImages,
 } from "../data/storage";
 import { sanitizeHtml } from "../shared/html";
+import type { Article, LessonTreeNode } from "../shared/types";
 
 const basePath = import.meta.env.BASE_URL === "/" ? "" : import.meta.env.BASE_URL.replace(/\/$/, "");
 const withBasePath = (path: string) => `${basePath}${path}`;
 
 export function PortalApp() {
   const [articles, setArticles] = useState(() => getArticles());
+  const [lessonTree, setLessonTree] = useState<LessonTreeNode[]>([]);
   const [, refreshImages] = useState(0);
   const [storageStatus, setStorageStatus] = useState(() => getStorageStatus());
   const initialHashId = new URLSearchParams(window.location.hash.replace(/^#/, "")).get("article") || undefined;
@@ -28,17 +30,55 @@ export function PortalApp() {
   const needle = query.toLowerCase().trim();
   const matches = (text: string) => !needle || text.toLowerCase().includes(needle);
   const standalone = articles.filter((article) => !isLessonArticle(article)).filter((article) => matches(`${article.title} ${article.category} ${article.summary || ""} ${article.html}`));
-  const lessons = getLessonGroups(
-    articles.filter((article) => matches(`${article.title} ${article.category} ${article.lessonTitle || ""} ${article.lessonCourse || ""} ${article.lessonAge || ""} ${article.html}`)),
+
+  const articleById = useMemo(() => new Map(articles.map((article) => [article.id, article])), [articles]);
+  const nodesByParent = useMemo(() => {
+    const map = new Map<string | undefined, LessonTreeNode[]>();
+    lessonTree.forEach((node) => {
+      const siblings = map.get(node.parentId) || [];
+      siblings.push(node);
+      map.set(node.parentId, siblings);
+    });
+    map.forEach((nodes) => nodes.sort((a, b) => a.order - b.order || a.title.localeCompare(b.title)));
+    return map;
+  }, [lessonTree]);
+
+  const nodeHasMatch = (node: LessonTreeNode): boolean => {
+    const article = node.articleId ? articleById.get(node.articleId) : undefined;
+    const ownText = `${node.title} ${article?.title || ""} ${article?.summary || ""} ${article?.html || ""}`;
+    return matches(ownText) || (nodesByParent.get(node.id) || []).some(nodeHasMatch);
+  };
+
+  const lessonMaterials = useMemo(
+    () => lessonTree.filter((node) => node.type === "material" && node.articleId).map((node) => articleById.get(node.articleId!)).filter(Boolean) as Article[],
+    [articleById, lessonTree],
   );
 
   const selectedArticle = useMemo(() => {
     if (mode === "articles") return standalone.find((article) => article.id === selectedId) || standalone[0];
-    const material = lessons.flatMap((lesson) => lesson.materials).find((article) => article.id === selectedId);
-    return material || lessons[0]?.materials[0];
-  }, [lessons, mode, selectedId, standalone]);
+    return lessonMaterials.find((article) => article.id === selectedId) || lessonMaterials[0];
+  }, [lessonMaterials, mode, selectedId, standalone]);
 
-  const selectedLesson = lessons.find((lesson) => lesson.materials.some((material) => material.id === selectedArticle?.id));
+  const selectedMaterialNode = selectedArticle ? lessonTree.find((node) => node.type === "material" && node.articleId === selectedArticle.id) : undefined;
+  const selectedPath = useMemo(() => {
+    if (!selectedMaterialNode) return [] as LessonTreeNode[];
+    const path = [selectedMaterialNode];
+    let current = selectedMaterialNode;
+    while (current.parentId) {
+      const parent = lessonTree.find((node) => node.id === current.parentId);
+      if (!parent) break;
+      path.unshift(parent);
+      current = parent;
+    }
+    return path;
+  }, [lessonTree, selectedMaterialNode]);
+  const selectedLessonNode = [...selectedPath].reverse().find((node) => node.type === "lesson");
+  const siblingMaterials = selectedLessonNode
+    ? (nodesByParent.get(selectedLessonNode.id) || [])
+        .filter((node) => node.type === "material" && node.articleId)
+        .map((node) => ({ node, article: articleById.get(node.articleId!) }))
+        .filter((item): item is { node: LessonTreeNode; article: Article } => Boolean(item.article))
+    : [];
 
   useEffect(() => {
     const openFromHash = () => {
@@ -54,7 +94,9 @@ export function PortalApp() {
 
   useEffect(() => {
     const refreshArticles = async () => {
-      setArticles(await getArticlesAsync());
+      const [nextArticles, nextTree] = await Promise.all([getArticlesAsync(), getLessonTreeAsync()]);
+      setArticles(nextArticles);
+      setLessonTree(nextTree);
       setStorageStatus(getStorageStatus());
     };
     const refreshStoredImages = async () => {
@@ -118,6 +160,31 @@ export function PortalApp() {
     await navigator.clipboard?.writeText(url).catch(() => window.prompt("Ссылка на материал", url));
   };
 
+  const renderLessonNodes = (parentId?: string, depth = 0): React.ReactNode =>
+    (nodesByParent.get(parentId) || []).filter(nodeHasMatch).map((node) => {
+      const article = node.articleId ? articleById.get(node.articleId) : undefined;
+      const isActive = article?.id === selectedArticle?.id;
+      if (node.type === "material" && article) {
+        return (
+          <button
+            key={node.id}
+            className={`portal-card material ${isActive ? "active" : ""}`}
+            style={{ marginLeft: depth * 12 }}
+            onClick={() => setSelectedId(article.id)}
+          >
+            {node.title || article.materialType || article.title}
+          </button>
+        );
+      }
+
+      return (
+        <div className={`lesson-tree-node lesson-tree-node-${node.type}`} key={node.id} style={{ marginLeft: depth * 10 }}>
+          <strong>{node.title}</strong>
+          {renderLessonNodes(node.id, depth + 1)}
+        </div>
+      );
+    });
+
   return (
     <main className="portal-shell">
       <header className="portal-header">
@@ -159,18 +226,7 @@ export function PortalApp() {
               </button>
             ))}
           {mode === "lessons" &&
-            lessons.map((lesson) => (
-              <div className="lesson-tree" key={lesson.id}>
-                <strong>{lesson.course}</strong>
-                <span>{lesson.age}</span>
-                <b>{lesson.title}</b>
-                {lesson.materials.map((material) => (
-                  <button key={material.id} className={`portal-card material ${selectedArticle?.id === material.id ? "active" : ""}`} onClick={() => setSelectedId(material.id)}>
-                    {material.materialType || material.title}
-                  </button>
-                ))}
-              </div>
-            ))}
+            renderLessonNodes()}
         </aside>
 
         <article className="reader panel panel-pad">
@@ -180,21 +236,23 @@ export function PortalApp() {
                 <div className="shield-strip">
                   <span>Копирование отключено</span>
                   <span>Печать отключена</span>
-                  {selectedLesson && <span>{selectedLesson.course} · {selectedLesson.age}</span>}
+                  {selectedPath.length > 1 && <span>{selectedPath.slice(0, -1).map((node) => node.title).join(" · ")}</span>}
                 </div>
                 <button onClick={copyLink}>Скопировать ссылку</button>
               </div>
-              {selectedLesson && (
+              {selectedLessonNode && (
                 <header className="lesson-head">
                   <small>Методика занятия</small>
-                  <h1>{selectedLesson.title}</h1>
-                  <div className="lesson-tabs">
-                    {selectedLesson.materials.map((material) => (
-                      <button key={material.id} className={selectedArticle.id === material.id ? "active" : ""} onClick={() => setSelectedId(material.id)}>
-                        {material.materialType || material.title}
-                      </button>
-                    ))}
-                  </div>
+                  <h1>{selectedLessonNode.title}</h1>
+                  {!!siblingMaterials.length && (
+                    <div className="lesson-tabs">
+                      {siblingMaterials.map(({ node, article }) => (
+                        <button key={node.id} className={selectedArticle.id === article.id ? "active" : ""} onClick={() => setSelectedId(article.id)}>
+                          {node.title || article.materialType || article.title}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </header>
               )}
               <div dangerouslySetInnerHTML={{ __html: renderStoredImages(sanitizeHtml(selectedArticle.html)) }} />
