@@ -1,8 +1,9 @@
-import type { Article } from "../shared/types";
+import type { Article, AuditEvent, LessonTreeNode } from "../shared/types";
 import { seedArticles } from "./seed";
 
 const ARTICLES_KEY = "franchiseArticles";
 const IMAGES_KEY = "franchiseImages";
+const META_KEY = "__franchiseMeta";
 const SUPABASE_TABLE = "franchise_content";
 const SUPABASE_ROW_ID = "default";
 export const ARTICLES_CHANGED_EVENT = "franchise:articles-changed";
@@ -17,6 +18,11 @@ let remoteStatusDetail = hasRemoteBackend ? "Supabase configured, waiting for fi
 type ContentState = {
   articles: Article[];
   images: Record<string, StoredImage>;
+};
+
+type StoredContentMeta = {
+  lessonTree?: LessonTreeNode[];
+  auditEvents?: AuditEvent[];
 };
 
 function readCachedArticles(): Article[] {
@@ -53,6 +59,17 @@ export function getStorageStatus() {
 function dispatchContentEvents() {
   window.dispatchEvent(new CustomEvent(ARTICLES_CHANGED_EVENT));
   window.dispatchEvent(new CustomEvent(IMAGES_CHANGED_EVENT));
+}
+
+function getStoredMeta(images = getImages()): StoredContentMeta {
+  return ((images as any)[META_KEY] || {}) as StoredContentMeta;
+}
+
+function setStoredMeta(images: Record<string, StoredImage>, meta: StoredContentMeta) {
+  return {
+    ...images,
+    [META_KEY]: meta,
+  } as unknown as Record<string, StoredImage>;
 }
 
 function cacheState(state: ContentState) {
@@ -196,6 +213,82 @@ export async function setImagesAsync(images: Record<string, StoredImage>) {
   const { articles } = await loadRemoteState();
   await saveRemoteState({ articles, images });
   dispatchContentEvents();
+}
+
+function buildLessonTreeFromArticles(articles: Article[]) {
+  const nodes: LessonTreeNode[] = [];
+  const courseIds = new Map<string, string>();
+  const ageIds = new Map<string, string>();
+
+  articles.filter(isLessonArticle).forEach((article, index) => {
+    const course = article.lessonCourse || article.category || "Методики занятий";
+    const age = article.lessonAge || "Без возраста";
+    const lessonTitle = article.lessonTitle || article.title;
+    const courseId = courseIds.get(course) || `course-${courseIds.size + 1}-${course.toLowerCase().replace(/[^a-zа-я0-9]+/gi, "-")}`;
+    courseIds.set(course, courseId);
+
+    if (!nodes.some((node) => node.id === courseId)) {
+      nodes.push({ id: courseId, type: "folder", title: course, order: courseIds.size });
+    }
+
+    const ageKey = `${courseId}/${age}`;
+    const ageId = ageIds.get(ageKey) || `age-${ageIds.size + 1}-${age.toLowerCase().replace(/[^a-zа-я0-9]+/gi, "-")}`;
+    ageIds.set(ageKey, ageId);
+
+    if (!nodes.some((node) => node.id === ageId)) {
+      nodes.push({ id: ageId, parentId: courseId, type: "folder", title: age, order: ageIds.size });
+    }
+
+    const lessonId = article.lessonId || `lesson-${article.id}`;
+    if (!nodes.some((node) => node.id === lessonId)) {
+      nodes.push({ id: lessonId, parentId: ageId, type: "lesson", title: lessonTitle, order: index + 1, roles: article.roles });
+    }
+
+    nodes.push({
+      id: `material-${article.id}`,
+      parentId: lessonId,
+      type: "material",
+      title: article.materialType || article.title,
+      order: article.lessonOrder || index + 1,
+      articleId: article.id,
+      roles: article.roles,
+    });
+  });
+
+  return nodes;
+}
+
+export async function getLessonTreeAsync(): Promise<LessonTreeNode[]> {
+  const images = await getImagesAsync();
+  const meta = getStoredMeta(images);
+  if (meta.lessonTree?.length) return meta.lessonTree;
+  const lessonTree = buildLessonTreeFromArticles(await getArticlesAsync());
+  await setLessonTreeAsync(lessonTree);
+  return lessonTree;
+}
+
+export async function setLessonTreeAsync(lessonTree: LessonTreeNode[]) {
+  const images = await getImagesAsync();
+  const meta = getStoredMeta(images);
+  await setImagesAsync(setStoredMeta(images, { ...meta, lessonTree }));
+}
+
+export async function getAuditEventsAsync() {
+  const images = await getImagesAsync();
+  return getStoredMeta(images).auditEvents || [];
+}
+
+export async function addAuditEvent(action: string, detail: string) {
+  const images = await getImagesAsync();
+  const meta = getStoredMeta(images);
+  const event: AuditEvent = {
+    id: crypto.randomUUID(),
+    action,
+    detail,
+    actor: "Админка",
+    createdAt: new Date().toLocaleString("ru-RU"),
+  };
+  await setImagesAsync(setStoredMeta(images, { ...meta, auditEvents: [event, ...(meta.auditEvents || [])].slice(0, 200) }));
 }
 
 export function renderStoredImages(html: string) {

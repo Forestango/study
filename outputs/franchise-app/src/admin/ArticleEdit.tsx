@@ -1,10 +1,11 @@
 import { Create, Edit } from "@refinedev/antd";
 import { useNavigation, useOne } from "@refinedev/core";
-import { Button, Card, Checkbox, Col, Form, Input, InputNumber, Row, Space } from "antd";
+import { Button, Card, Checkbox, Col, Form, Input, InputNumber, Row, Select, Space } from "antd";
 import { useEffect, useMemo, useRef } from "react";
 import { useParams } from "react-router";
-import { getArticlesAsync, getImagesAsync, setArticlesAsync, setImagesAsync } from "../data/storage";
+import { addAuditEvent, getArticlesAsync, getImagesAsync, setArticlesAsync, setImagesAsync } from "../data/storage";
 import { sanitizeHtml, summaryFromHtml } from "../shared/html";
+import { markdownToHtml } from "../shared/markdown";
 import type { Article } from "../shared/types";
 
 type Props = {
@@ -35,18 +36,23 @@ export function ArticleEdit({ mode }: Props) {
   });
   const record = result;
   const isLesson = Form.useWatch("isLessonMaterial", form);
+  const bodyFormat = Form.useWatch("bodyFormat", form) || "html";
 
   const initialValues = useMemo(
     () =>
       record
         ? {
             ...record,
+            bodyFormat: record.bodyFormat || "html",
+            markdown: record.markdown || "",
             isLessonMaterial: record.contentType === "lesson" || !!record.lessonId,
           }
         : {
             title: "",
             category: "",
             html: "<h2>Название</h2>\n<p>Текст материала.</p>",
+            markdown: "# Название\n\nТекст материала.",
+            bodyFormat: "html" as const,
             roles: ["owner"] as Article["roles"],
             isLessonMaterial: false,
           },
@@ -102,8 +108,10 @@ export function ArticleEdit({ mode }: Props) {
       contentType: (values as any).isLessonMaterial ? "lesson" : "article",
       id: record?.id || crypto.randomUUID(),
       updated: new Date().toLocaleDateString("ru-RU"),
-      html: sanitizeHtml(values.html),
-      summary: summaryFromHtml(values.html),
+      bodyFormat: values.bodyFormat || "html",
+      markdown: values.markdown,
+      html: values.bodyFormat === "markdown" ? markdownToHtml(values.markdown || "") : sanitizeHtml(values.html),
+      summary: summaryFromHtml(values.bodyFormat === "markdown" ? markdownToHtml(values.markdown || "") : values.html),
       roles: values.roles?.length ? values.roles : ["owner"],
     };
 
@@ -119,6 +127,7 @@ export function ArticleEdit({ mode }: Props) {
     }
 
     await setArticlesAsync(record ? articles.map((item) => (item.id === record.id ? article : item)) : [article, ...articles]);
+    await addAuditEvent(record ? "Обновлен материал" : "Создан материал", article.title);
     list("articles");
   };
 
@@ -186,9 +195,28 @@ export function ArticleEdit({ mode }: Props) {
           />
         </Form.Item>
 
-        <Form.Item name="html" label="HTML" rules={[{ required: true }]}>
-          <Input.TextArea rows={18} />
-        </Form.Item>
+        <Row gutter={16}>
+          <Col span={8}>
+            <Form.Item name="bodyFormat" label="Формат материала">
+              <Select
+                options={[
+                  { label: "HTML", value: "html" },
+                  { label: "Markdown", value: "markdown" },
+                ]}
+              />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        {bodyFormat === "markdown" ? (
+          <Form.Item name="markdown" label="Markdown" rules={[{ required: true }]}>
+            <Input.TextArea rows={18} />
+          </Form.Item>
+        ) : (
+          <Form.Item name="html" label="HTML" rules={[{ required: true }]}>
+            <Input.TextArea rows={18} />
+          </Form.Item>
+        )}
 
         <Space>
           <Button onClick={() => htmlFileRef.current?.click()}>Импорт HTML из файла</Button>

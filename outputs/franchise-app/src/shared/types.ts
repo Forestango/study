@@ -1,10 +1,32 @@
 export type Role = "owner" | "methodist" | "admin" | "coach";
 
+export type LessonTreeNodeType = "folder" | "lesson" | "material";
+
+export type LessonTreeNode = {
+  id: string;
+  parentId?: string;
+  type: LessonTreeNodeType;
+  title: string;
+  order: number;
+  articleId?: string;
+  roles?: Role[];
+};
+
+export type AuditEvent = {
+  id: string;
+  action: string;
+  detail: string;
+  actor: string;
+  createdAt: string;
+};
+
 export type Article = {
   id: string;
   title: string;
   category: string;
   html: string;
+  markdown?: string;
+  bodyFormat?: "html" | "markdown";
   updated: string;
   roles: Role[];
   summary?: string;

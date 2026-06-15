@@ -4,8 +4,10 @@ import routerProvider, { NavigateToResource } from "@refinedev/react-router";
 import { ConfigProvider, App as AntdApp } from "antd";
 import { Outlet, Route, Routes } from "react-router";
 import { localDataProvider } from "../data/localDataProvider";
+import { AccessSettings } from "./AccessSettings";
 import { ArticleEdit } from "./ArticleEdit";
 import { ArticleList } from "./ArticleList";
+import { AuditLog } from "./AuditLog";
 import { LessonTree } from "./LessonTree";
 import "@refinedev/antd/dist/reset.css";
 
@@ -30,6 +32,16 @@ export function AdminApp() {
               list: "/admin/lessons",
               meta: { label: "Дерево уроков" },
             },
+            {
+              name: "access",
+              list: "/admin/access",
+              meta: { label: "Права доступа" },
+            },
+            {
+              name: "audit",
+              list: "/admin/audit",
+              meta: { label: "Последние действия" },
+            },
           ]}
         >
           <Routes>
@@ -49,6 +61,8 @@ export function AdminApp() {
               <Route path="articles/new" element={<ArticleEdit mode="create" />} />
               <Route path="articles/:id" element={<ArticleEdit mode="edit" />} />
               <Route path="lessons" element={<LessonTree />} />
+              <Route path="access" element={<AccessSettings />} />
+              <Route path="audit" element={<AuditLog />} />
             </Route>
           </Routes>
         </Refine>
