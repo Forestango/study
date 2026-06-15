@@ -49,7 +49,7 @@ npm run dev
    - `Settings -> Secrets and variables -> Actions -> Variables`
      - `VITE_SUPABASE_URL` = Project URL.
    - `Settings -> Secrets and variables -> Actions -> Secrets`
-     - `VITE_SUPABASE_ANON_KEY` = anon public key.
+     - `VITE_SUPABASE_PUBLISHABLE_KEY` = publishable key (`sb_publishable_...`).
 4. Перезапустить workflow `Deploy franchise app`.
 
 Без этих переменных приложение продолжит работать в localStorage-режиме.

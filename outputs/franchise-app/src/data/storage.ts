@@ -9,8 +9,8 @@ export const ARTICLES_CHANGED_EVENT = "franchise:articles-changed";
 export const IMAGES_CHANGED_EVENT = "franchise:images-changed";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.replace(/\/$/, "");
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const hasRemoteBackend = Boolean(supabaseUrl && supabaseAnonKey);
+const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY;
+const hasRemoteBackend = Boolean(supabaseUrl && supabasePublishableKey);
 let remoteStatus: "local" | "connected" | "error" = hasRemoteBackend ? "local" : "local";
 let remoteStatusDetail = hasRemoteBackend ? "Supabase configured, waiting for first sync" : "Supabase env is not configured";
 
@@ -69,8 +69,8 @@ async function requestRemoteContent(method: "GET" | "POST", body?: ContentState)
   const response = await fetch(endpoint, {
     method,
     headers: {
-      apikey: supabaseAnonKey,
-      Authorization: `Bearer ${supabaseAnonKey}`,
+      apikey: supabasePublishableKey,
+      Authorization: `Bearer ${supabasePublishableKey}`,
       "Content-Type": "application/json",
       ...(method === "POST" ? { Prefer: "resolution=merge-duplicates" } : {}),
     },
