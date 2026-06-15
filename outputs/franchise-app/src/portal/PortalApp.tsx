@@ -7,6 +7,7 @@ import {
   getArticlesAsync,
   getImagesAsync,
   getLessonGroups,
+  getStorageStatus,
   isLessonArticle,
   renderStoredImages,
 } from "../data/storage";
@@ -18,6 +19,7 @@ const withBasePath = (path: string) => `${basePath}${path}`;
 export function PortalApp() {
   const [articles, setArticles] = useState(() => getArticles());
   const [, refreshImages] = useState(0);
+  const [storageStatus, setStorageStatus] = useState(() => getStorageStatus());
   const initialHashId = new URLSearchParams(window.location.hash.replace(/^#/, "")).get("article") || undefined;
   const initialHashArticle = articles.find((item) => item.id === initialHashId);
   const [mode, setMode] = useState<"articles" | "lessons">(initialHashArticle && isLessonArticle(initialHashArticle) ? "lessons" : "articles");
@@ -51,10 +53,14 @@ export function PortalApp() {
   }, [articles]);
 
   useEffect(() => {
-    const refreshArticles = async () => setArticles(await getArticlesAsync());
+    const refreshArticles = async () => {
+      setArticles(await getArticlesAsync());
+      setStorageStatus(getStorageStatus());
+    };
     const refreshStoredImages = async () => {
       await getImagesAsync();
       refreshImages((value) => value + 1);
+      setStorageStatus(getStorageStatus());
     };
     const handleStorage = (event: StorageEvent) => {
       if (event.key === "franchiseArticles") refreshArticles();
@@ -123,6 +129,9 @@ export function PortalApp() {
           </div>
         </div>
         <div className="header-actions">
+          <span className={`sync-status sync-status-${storageStatus.mode}`} title={storageStatus.detail}>
+            {storageStatus.mode === "connected" ? "Общая база" : storageStatus.mode === "error" ? "Ошибка базы" : "Локально"}
+          </span>
           <Link to="/admin/articles">Админка</Link>
           <Link to="/admin/lessons">Уроки в админке</Link>
         </div>

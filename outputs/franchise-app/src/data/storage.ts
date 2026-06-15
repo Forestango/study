@@ -11,11 +11,44 @@ export const IMAGES_CHANGED_EVENT = "franchise:images-changed";
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.replace(/\/$/, "");
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const hasRemoteBackend = Boolean(supabaseUrl && supabaseAnonKey);
+let remoteStatus: "local" | "connected" | "error" = hasRemoteBackend ? "local" : "local";
+let remoteStatusDetail = hasRemoteBackend ? "Supabase configured, waiting for first sync" : "Supabase env is not configured";
 
 type ContentState = {
   articles: Article[];
   images: Record<string, StoredImage>;
 };
+
+function readCachedArticles(): Article[] {
+  const saved = localStorage.getItem(ARTICLES_KEY);
+  if (!saved) return seedArticles;
+  return JSON.parse(saved) as Article[];
+}
+
+function mergeArticles(remoteArticles: Article[], localArticles: Article[]) {
+  const byId = new Map(remoteArticles.map((article) => [article.id, article]));
+  localArticles.forEach((article) => {
+    if (!byId.has(article.id)) byId.set(article.id, article);
+  });
+  return Array.from(byId.values());
+}
+
+function markRemoteConnected(detail = "Supabase sync is active") {
+  remoteStatus = "connected";
+  remoteStatusDetail = detail;
+}
+
+function markRemoteError(error: unknown) {
+  remoteStatus = "error";
+  remoteStatusDetail = error instanceof Error ? error.message : "Supabase sync failed";
+}
+
+export function getStorageStatus() {
+  return {
+    mode: hasRemoteBackend ? remoteStatus : "local",
+    detail: remoteStatusDetail,
+  };
+}
 
 function dispatchContentEvents() {
   window.dispatchEvent(new CustomEvent(ARTICLES_CHANGED_EVENT));
@@ -52,28 +85,48 @@ async function requestRemoteContent(method: "GET" | "POST", body?: ContentState)
 }
 
 async function loadRemoteState(): Promise<ContentState> {
-  const rows = await requestRemoteContent("GET");
-  const row = rows[0];
-  if (row?.articles?.length) {
-    const state = {
-      articles: row.articles,
-      images: row.images || {},
-    };
-    cacheState(state);
-    return state;
-  }
+  try {
+    const rows = await requestRemoteContent("GET");
+    const row = rows[0];
+    const localArticles = readCachedArticles();
+    const localImages = getImages();
 
-  const state = {
-    articles: seedArticles,
-    images: getImages(),
-  };
-  await saveRemoteState(state);
-  return state;
+    if (row?.articles?.length) {
+      const mergedArticles = mergeArticles(row.articles, localArticles);
+      const mergedImages = { ...(row.images || {}), ...localImages };
+      const state = {
+        articles: mergedArticles,
+        images: mergedImages,
+      };
+
+      cacheState(state);
+      markRemoteConnected();
+      if (mergedArticles.length !== row.articles.length || Object.keys(mergedImages).length !== Object.keys(row.images || {}).length) {
+        await saveRemoteState(state);
+      }
+      return state;
+    }
+
+    const state = {
+      articles: localArticles,
+      images: localImages,
+    };
+    await saveRemoteState(state);
+    markRemoteConnected("Supabase row was initialized from this browser");
+    return state;
+  } catch (error) {
+    markRemoteError(error);
+    return {
+      articles: getArticles(),
+      images: getImages(),
+    };
+  }
 }
 
 async function saveRemoteState(state: ContentState) {
   cacheState(state);
   await requestRemoteContent("POST", state);
+  markRemoteConnected();
 }
 
 export function getArticles(): Article[] {
