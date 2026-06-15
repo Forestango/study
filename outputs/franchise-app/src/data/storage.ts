@@ -8,7 +8,7 @@ const SUPABASE_ROW_ID = "default";
 export const ARTICLES_CHANGED_EVENT = "franchise:articles-changed";
 export const IMAGES_CHANGED_EVENT = "franchise:images-changed";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.replace(/\/$/, "");
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.replace(/\/rest\/v1\/?$/, "").replace(/\/$/, "");
 const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY;
 const hasRemoteBackend = Boolean(supabaseUrl && supabasePublishableKey);
 let remoteStatus: "local" | "connected" | "error" = hasRemoteBackend ? "local" : "local";
