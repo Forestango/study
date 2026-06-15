@@ -1,11 +1,11 @@
 import { Create, Edit } from "@refinedev/antd";
 import { useNavigation, useOne } from "@refinedev/core";
-import { Button, Card, Checkbox, Col, Form, Input, InputNumber, Row, Select, Space } from "antd";
+import { Button, Card, Checkbox, Col, Form, Input, InputNumber, Row, Space } from "antd";
 import { useEffect, useMemo, useRef } from "react";
 import { useParams } from "react-router";
 import { addAuditEvent, getArticlesAsync, getImagesAsync, setArticlesAsync, setImagesAsync } from "../data/storage";
-import { sanitizeHtml, summaryFromHtml } from "../shared/html";
-import { markdownToHtml } from "../shared/markdown";
+import { summaryFromHtml } from "../shared/html";
+import { htmlToMarkdown, markdownToHtml } from "../shared/markdown";
 import type { Article } from "../shared/types";
 
 type Props = {
@@ -25,7 +25,7 @@ const escapeHtml = (value: string) =>
 
 export function ArticleEdit({ mode }: Props) {
   const [form] = Form.useForm<ArticleFormValues>();
-  const htmlFileRef = useRef<HTMLInputElement>(null);
+  const markdownFileRef = useRef<HTMLInputElement>(null);
   const imageFileRef = useRef<HTMLInputElement>(null);
   const { id } = useParams();
   const { list } = useNavigation();
@@ -36,23 +36,22 @@ export function ArticleEdit({ mode }: Props) {
   });
   const record = result;
   const isLesson = Form.useWatch("isLessonMaterial", form);
-  const bodyFormat = Form.useWatch("bodyFormat", form) || "html";
 
   const initialValues = useMemo(
     () =>
       record
         ? {
             ...record,
-            bodyFormat: record.bodyFormat || "html",
-            markdown: record.markdown || "",
+            bodyFormat: "markdown" as const,
+            markdown: record.markdown || htmlToMarkdown(record.html),
             isLessonMaterial: record.contentType === "lesson" || !!record.lessonId,
           }
         : {
             title: "",
             category: "",
-            html: "<h2>Название</h2>\n<p>Текст материала.</p>",
+            html: "",
             markdown: "# Название\n\nТекст материала.",
-            bodyFormat: "html" as const,
+            bodyFormat: "markdown" as const,
             roles: ["owner"] as Article["roles"],
             isLessonMaterial: false,
           },
@@ -63,19 +62,19 @@ export function ArticleEdit({ mode }: Props) {
     form.setFieldsValue(initialValues);
   }, [form, initialValues]);
 
-  const appendHtml = (snippet: string) => {
-    const currentHtml = form.getFieldValue("html") || "";
-    form.setFieldValue("html", `${currentHtml.trim()}\n\n${snippet}`.trim());
+  const appendMarkdown = (snippet: string) => {
+    const currentMarkdown = form.getFieldValue("markdown") || "";
+    form.setFieldValue("markdown", `${currentMarkdown.trim()}\n\n${snippet}`.trim());
   };
 
-  const importHtmlFile = (file?: File) => {
+  const importMarkdownFile = (file?: File) => {
     if (!file) return;
     const reader = new FileReader();
     reader.addEventListener("load", () => {
-      form.setFieldValue("html", sanitizeHtml(String(reader.result || "")));
+      form.setFieldValue("markdown", String(reader.result || ""));
     });
     reader.readAsText(file);
-    if (htmlFileRef.current) htmlFileRef.current.value = "";
+    if (markdownFileRef.current) markdownFileRef.current.value = "";
   };
 
   const insertImageFile = (file?: File) => {
@@ -94,7 +93,7 @@ export function ArticleEdit({ mode }: Props) {
           src: String(reader.result || ""),
         },
       });
-      appendHtml(`<figure>\n  <img src="franchise-image:${id}" alt="${safeCaption}">\n  <figcaption>${safeCaption}</figcaption>\n</figure>`);
+      appendMarkdown(`![${safeCaption}](franchise-image:${id})`);
     });
     reader.readAsDataURL(file);
     if (imageFileRef.current) imageFileRef.current.value = "";
@@ -102,16 +101,17 @@ export function ArticleEdit({ mode }: Props) {
 
   const save = async (values: ArticleFormValues) => {
     const articles = await getArticlesAsync();
+    const html = markdownToHtml(values.markdown || "");
     const article: Article = {
       ...initialValues,
       ...values,
       contentType: (values as any).isLessonMaterial ? "lesson" : "article",
       id: record?.id || crypto.randomUUID(),
       updated: new Date().toLocaleDateString("ru-RU"),
-      bodyFormat: values.bodyFormat || "html",
-      markdown: values.markdown,
-      html: values.bodyFormat === "markdown" ? markdownToHtml(values.markdown || "") : sanitizeHtml(values.html),
-      summary: summaryFromHtml(values.bodyFormat === "markdown" ? markdownToHtml(values.markdown || "") : values.html),
+      bodyFormat: "markdown",
+      markdown: values.markdown || "",
+      html,
+      summary: summaryFromHtml(html),
       roles: values.roles?.length ? values.roles : ["owner"],
     };
 
@@ -195,38 +195,19 @@ export function ArticleEdit({ mode }: Props) {
           />
         </Form.Item>
 
-        <Row gutter={16}>
-          <Col span={8}>
-            <Form.Item name="bodyFormat" label="Формат материала">
-              <Select
-                options={[
-                  { label: "HTML", value: "html" },
-                  { label: "Markdown", value: "markdown" },
-                ]}
-              />
-            </Form.Item>
-          </Col>
-        </Row>
-
-        {bodyFormat === "markdown" ? (
-          <Form.Item name="markdown" label="Markdown" rules={[{ required: true }]}>
-            <Input.TextArea rows={18} />
-          </Form.Item>
-        ) : (
-          <Form.Item name="html" label="HTML" rules={[{ required: true }]}>
-            <Input.TextArea rows={18} />
-          </Form.Item>
-        )}
+        <Form.Item name="markdown" label="Markdown" rules={[{ required: true }]}>
+          <Input.TextArea rows={18} />
+        </Form.Item>
 
         <Space>
-          <Button onClick={() => htmlFileRef.current?.click()}>Импорт HTML из файла</Button>
+          <Button onClick={() => markdownFileRef.current?.click()}>Импорт Markdown из файла</Button>
           <Button onClick={() => imageFileRef.current?.click()}>Добавить картинку</Button>
           <Button type="primary" onClick={() => form.submit()}>
             Сохранить
           </Button>
           <Button onClick={() => list("articles")}>Отмена</Button>
         </Space>
-        <input ref={htmlFileRef} type="file" accept=".html,.htm,text/html" hidden onChange={(event) => importHtmlFile(event.target.files?.[0])} />
+        <input ref={markdownFileRef} type="file" accept=".md,.markdown,text/markdown,text/plain" hidden onChange={(event) => importMarkdownFile(event.target.files?.[0])} />
         <input ref={imageFileRef} type="file" accept="image/*" hidden onChange={(event) => insertImageFile(event.target.files?.[0])} />
       </Form>
     </Wrapper>

@@ -5,6 +5,7 @@ const inlineMarkdown = (value: string) =>
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
+    .replace(/!\[([^\]]*)\]\((franchise-image:[^)]+|https?:\/\/[^)]+)\)/g, '<img src="$2" alt="$1">')
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
     .replace(/\*([^*]+)\*/g, "<em>$1</em>")
     .replace(/`([^`]+)`/g, "<code>$1</code>")
@@ -47,4 +48,45 @@ export function markdownToHtml(markdown: string) {
 
   flushList();
   return sanitizeHtml(html.join("\n"));
+}
+
+export function htmlToMarkdown(html: string) {
+  const parsedDocument = new DOMParser().parseFromString(sanitizeHtml(html), "text/html");
+  const lines: string[] = [];
+
+  parsedDocument.body.childNodes.forEach((node) => {
+    if (!(node instanceof HTMLElement)) {
+      const text = node.textContent?.trim();
+      if (text) lines.push(text);
+      return;
+    }
+
+    if (/^H[1-3]$/.test(node.tagName)) {
+      lines.push(`${"#".repeat(Number(node.tagName.slice(1)))} ${node.textContent?.trim() || ""}`);
+      return;
+    }
+
+    if (node.tagName === "UL" || node.tagName === "OL") {
+      node.querySelectorAll("li").forEach((item) => lines.push(`- ${item.textContent?.trim() || ""}`));
+      return;
+    }
+
+    if (node.tagName === "FIGURE") {
+      const image = node.querySelector("img");
+      const caption = node.querySelector("figcaption")?.textContent?.trim() || image?.getAttribute("alt") || "";
+      const src = image?.getAttribute("src");
+      if (src) lines.push(`![${caption}](${src})`);
+      return;
+    }
+
+    if (node.tagName === "IMG") {
+      lines.push(`![${node.getAttribute("alt") || ""}](${node.getAttribute("src") || ""})`);
+      return;
+    }
+
+    const text = node.textContent?.trim();
+    if (text) lines.push(text);
+  });
+
+  return lines.join("\n\n").trim();
 }
