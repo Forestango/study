@@ -168,11 +168,13 @@ export function PortalApp() {
         return (
           <button
             key={node.id}
-            className={`portal-card material ${isActive ? "active" : ""}`}
+            className={`portal-card portal-card-material ${isActive ? "active" : ""}`}
             style={{ marginLeft: depth * 12 }}
             onClick={() => setSelectedId(article.id)}
           >
-            {node.title || article.materialType || article.title}
+            <span>{node.title || article.materialType || "Материал"}</span>
+            <strong>{article.title}</strong>
+            <small>{article.summary}</small>
           </button>
         );
       }
@@ -195,28 +197,23 @@ export function PortalApp() {
             <small>Владелец франшизы</small>
           </div>
         </div>
-        <div className="header-actions">
-          <span className={`sync-status sync-status-${storageStatus.mode}`} title={storageStatus.detail}>
-            {storageStatus.mode === "connected" ? "Общая база" : storageStatus.mode === "error" ? "Ошибка базы" : "Локально"}
-          </span>
-          <Link to="/admin/articles">Админка</Link>
-          <Link to="/admin/lessons">Уроки в админке</Link>
-        </div>
-      </header>
-
-      <section className="portal-toolbar">
         <div className="mode-switch">
           <button className={mode === "articles" ? "active" : ""} onClick={() => setMode("articles")}>Статьи</button>
           <button className={mode === "lessons" ? "active" : ""} onClick={() => setMode("lessons")}>Уроки</button>
         </div>
         <label className="portal-search">
-          <span>⌕</span>
-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Поиск по материалам..." />
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Поиск по материалам" />
         </label>
-      </section>
+        <div className="header-actions">
+          <span className={`sync-status sync-status-${storageStatus.mode}`} title={storageStatus.detail}>
+            {storageStatus.mode === "connected" ? "Общая база" : storageStatus.mode === "error" ? "Ошибка базы" : "Локально"}
+          </span>
+          <Link to="/admin/articles">Админка</Link>
+        </div>
+      </header>
 
       <section className="portal-grid">
-        <aside className="portal-list panel panel-pad">
+        <aside className="portal-list">
           {mode === "articles" &&
             standalone.map((article) => (
               <button key={article.id} className={`portal-card ${selectedArticle?.id === article.id ? "active" : ""}`} onClick={() => setSelectedId(article.id)}>
@@ -229,7 +226,7 @@ export function PortalApp() {
             renderLessonNodes()}
         </aside>
 
-        <article className="reader panel panel-pad">
+        <article className="reader">
           {selectedArticle ? (
             <>
               <div className="reader-actions">

@@ -1,6 +1,6 @@
 :root {
-  color: #172026;
-  background: #f6f8f6;
+  color: #151d24;
+  background: #f4f7f4;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
@@ -27,37 +27,43 @@ a {
 
 .portal-shell {
   min-height: 100vh;
-  padding: 0;
-}
-
-.portal-header,
-.portal-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  padding: 16px 24px;
-  background: rgba(255, 255, 255, 0.96);
+  padding: 28px 36px 36px;
+  background: #f4f7f4;
 }
 
 .portal-header {
-  justify-content: space-between;
-  border-bottom: 1px solid #dfe6ea;
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  min-height: 76px;
+  margin-bottom: 42px;
 }
 
 .profile-pill {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex: 0 0 318px;
 }
 
 .profile-pill > span {
   display: grid;
   place-items: center;
-  width: 42px;
-  height: 42px;
-  border-radius: 6px;
-  background: #c28b2c;
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  background: #efff00;
+  color: #05080a;
+  font-size: 26px;
   font-weight: 900;
+}
+
+.profile-pill strong {
+  display: block;
+  color: #05080a;
+  font-size: 20px;
+  line-height: 1.1;
+  white-space: nowrap;
 }
 
 .profile-pill small,
@@ -65,43 +71,50 @@ a {
 .lesson-tree span,
 .lesson-head small {
   display: block;
-  color: #68737d;
+  color: #73808c;
 }
 
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: flex-end;
+  gap: 14px;
+  flex: 0 0 auto;
 }
 
 .header-actions a,
 .reader-actions button {
   display: inline-flex;
   align-items: center;
-  min-height: 38px;
-  padding: 0 12px;
-  border: 1px solid #dfe6ea;
-  border-radius: 6px;
+  justify-content: center;
+  min-height: 56px;
+  padding: 0 24px;
+  max-width: 190px;
+  border: 0;
+  border-radius: 999px;
   background: #fff;
-  font-weight: 800;
+  color: #151d24;
+  font-weight: 700;
+  line-height: 1.15;
+  box-shadow: 0 1px 0 rgba(18, 28, 36, 0.03);
 }
 
 .sync-status {
   display: inline-flex;
   align-items: center;
-  min-height: 38px;
-  padding: 0 10px;
-  border: 1px solid #dfe6ea;
-  border-radius: 6px;
+  justify-content: center;
+  min-height: 56px;
+  padding: 0 24px;
+  border: 0;
+  border-radius: 999px;
   background: #f7faf8;
   color: #334049;
-  font-size: 12px;
-  font-weight: 900;
+  font-size: 16px;
+  font-weight: 700;
 }
 
 .sync-status-connected {
-  border-color: rgba(31, 122, 92, 0.34);
-  background: #edf6f2;
+  background: #8af5d1;
   color: #125341;
 }
 
@@ -111,42 +124,40 @@ a {
   color: #8f2424;
 }
 
-.portal-toolbar {
-  padding-top: 20px;
-}
-
 .mode-switch {
   display: inline-flex;
-  gap: 4px;
+  flex: 0 0 238px;
+  gap: 6px;
   padding: 4px;
-  border: 1px solid #dfe6ea;
-  border-radius: 8px;
+  border: 0;
+  border-radius: 999px;
   background: #fff;
 }
 
 .mode-switch button {
   min-width: 112px;
-  min-height: 42px;
+  min-height: 66px;
   border: 0;
-  border-radius: 6px;
+  border-radius: 999px;
   background: transparent;
-  font-weight: 800;
+  color: #151d24;
+  font-size: 16px;
+  font-weight: 700;
 }
 
 .mode-switch button.active {
-  background: #172026;
-  color: #fff;
+  background: #f4f7f4;
+  color: #151d24;
 }
 
 .portal-search {
   display: flex;
   align-items: center;
-  gap: 8px;
   flex: 1;
-  min-height: 50px;
-  padding: 0 14px;
-  border: 1px solid #dfe6ea;
-  border-radius: 8px;
+  min-height: 76px;
+  padding: 0 32px;
+  border: 0;
+  border-radius: 999px;
   background: #fff;
 }
 
@@ -154,14 +165,20 @@ a {
   width: 100%;
   border: 0;
   outline: 0;
+  color: #151d24;
   font: inherit;
+  font-size: 18px;
+}
+
+.portal-search input::placeholder {
+  color: #828a91;
 }
 
 .portal-grid {
   display: grid;
-  grid-template-columns: minmax(280px, 380px) minmax(0, 1fr);
-  gap: 18px;
-  padding: 0 24px 24px;
+  grid-template-columns: minmax(320px, 506px) minmax(0, 1fr);
+  gap: 56px;
+  align-items: start;
 }
 
 .panel {
@@ -176,31 +193,50 @@ a {
 
 .portal-list,
 .reader {
-  height: calc(100vh - 154px);
+  height: calc(100vh - 182px);
   overflow: auto;
 }
 
 .portal-list {
   display: grid;
   align-content: start;
-  gap: 10px;
+  gap: 12px;
+  padding-right: 0;
 }
 
 .portal-card {
   display: grid;
-  gap: 6px;
+  gap: 10px;
   width: 100%;
-  padding: 14px;
-  border: 1px solid #dfe6ea;
-  border-radius: 8px;
+  min-height: 212px;
+  padding: 26px 32px;
+  border: 0;
+  border-radius: 52px;
   background: #fff;
+  color: #151d24;
   text-align: left;
   font: inherit;
+  box-shadow: 0 1px 0 rgba(18, 28, 36, 0.02);
 }
 
 .portal-card.active {
-  border-color: #1f7a5c;
-  box-shadow: 0 0 0 3px rgba(31, 122, 92, 0.12);
+  box-shadow: inset 0 0 0 2px rgba(31, 122, 92, 0.18), 0 8px 30px rgba(18, 28, 36, 0.04);
+}
+
+.portal-card strong {
+  font-size: 24px;
+  line-height: 1.08;
+}
+
+.portal-card small {
+  display: -webkit-box;
+  overflow: hidden;
+  color: #6f7b86;
+  font-size: 18px;
+  font-weight: 650;
+  line-height: 1.22;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
 }
 
 .portal-card span,
@@ -208,12 +244,12 @@ a {
   display: inline-flex;
   width: max-content;
   align-items: center;
-  min-height: 24px;
-  padding: 0 8px;
+  min-height: 32px;
+  padding: 0 12px;
   border-radius: 999px;
-  background: #eef4f1;
+  background: #e6f7f0;
   color: #125341;
-  font-size: 12px;
+  font-size: 16px;
   font-weight: 800;
 }
 
@@ -227,24 +263,26 @@ a {
 .lesson-tree-node {
   display: grid;
   gap: 8px;
-  padding: 8px 0 4px 10px;
-  border-left: 2px solid #e4ece8;
+  padding: 4px 0 4px 8px;
 }
 
 .lesson-tree-node > strong {
   color: #172026;
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .lesson-tree-node-lesson > strong {
   color: #125341;
 }
 
-.portal-card.material {
-  border-left: 4px solid #c28b2c;
+.portal-card-material {
+  min-height: 148px;
 }
 
 .reader {
+  padding: 86px min(8vw, 96px) 96px;
+  border-radius: 64px 64px 0 0;
+  background: #fff;
   user-select: none;
   -webkit-user-select: none;
 }
@@ -253,7 +291,7 @@ a {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 18px;
+  margin-bottom: 28px;
 }
 
 .shield-strip,
@@ -264,21 +302,24 @@ a {
 }
 
 .lesson-head {
-  margin-bottom: 18px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid #dfe6ea;
+  margin-bottom: 28px;
+  padding-bottom: 8px;
 }
 
 .lesson-head h1 {
-  margin: 4px 0 14px;
+  margin: 14px 0 22px;
+  color: #121c24;
+  font-size: clamp(34px, 3vw, 48px);
+  line-height: 1.08;
+  letter-spacing: 0;
 }
 
 .lesson-tabs button {
   min-height: 36px;
-  padding: 0 12px;
-  border: 1px solid #dfe6ea;
+  padding: 0 16px;
+  border: 0;
   border-radius: 999px;
-  background: #fff;
+  background: #f4f7f4;
   font-weight: 800;
 }
 
@@ -290,9 +331,30 @@ a {
 
 .reader p,
 .reader li {
-  color: #334049;
-  font-size: 17px;
-  line-height: 1.7;
+  color: #34424e;
+  font-size: 20px;
+  font-weight: 650;
+  line-height: 1.58;
+}
+
+.reader h1 {
+  margin: 0 0 26px;
+  color: #121c24;
+  font-size: clamp(34px, 3vw, 48px);
+  line-height: 1.08;
+  letter-spacing: 0;
+}
+
+.reader h2 {
+  margin: 28px 0 14px;
+  color: #121c24;
+  font-size: 28px;
+  line-height: 1.18;
+  letter-spacing: 0;
+}
+
+.reader strong {
+  color: #25333f;
 }
 
 .reader img {
@@ -369,21 +431,50 @@ a {
 }
 
 @media (max-width: 900px) {
+  .portal-shell {
+    padding: 18px 14px 28px;
+  }
+
   .portal-header,
-  .portal-toolbar,
   .portal-grid,
-  .reader-actions {
+  .reader-actions,
+  .header-actions {
     flex-direction: column;
     align-items: stretch;
   }
 
+  .portal-header {
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+
+  .profile-pill,
+  .mode-switch {
+    flex: 1 1 auto;
+  }
+
+  .portal-search {
+    min-height: 58px;
+  }
+
   .portal-grid {
     grid-template-columns: 1fr;
+    gap: 18px;
   }
 
   .portal-list,
   .reader {
     height: auto;
+  }
+
+  .portal-card {
+    min-height: 160px;
+    border-radius: 32px;
+  }
+
+  .reader {
+    padding: 32px 22px 46px;
+    border-radius: 36px;
   }
 
   .markdown-editor-shell,
