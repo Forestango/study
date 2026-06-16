@@ -1,11 +1,13 @@
 import { Refine } from "@refinedev/core";
-import { RefineThemes, ThemedLayout, ThemedTitle, useNotificationProvider } from "@refinedev/antd";
+import { RefineThemes, useNotificationProvider } from "@refinedev/antd";
 import routerProvider, { NavigateToResource } from "@refinedev/react-router";
 import { ConfigProvider, App as AntdApp } from "antd";
 import { lazy } from "react";
-import { Outlet, Route, Routes } from "react-router";
+import { Route, Routes } from "react-router";
 import { localDataProvider } from "../data/localDataProvider";
 import { AccessSettings } from "./AccessSettings";
+import { AdminDashboard } from "./AdminDashboard";
+import { AdminLayout } from "./AdminLayout";
 import { ArticleList } from "./ArticleList";
 import { AuditLog } from "./AuditLog";
 import { LessonTree } from "./LessonTree";
@@ -47,18 +49,8 @@ export function AdminApp() {
           ]}
         >
           <Routes>
-            <Route
-              element={
-                <ThemedLayout
-                  Title={({ collapsed }: { collapsed: boolean }) => (
-                    <ThemedTitle collapsed={collapsed} text="Админка" />
-                  )}
-                >
-                  <Outlet />
-                </ThemedLayout>
-              }
-            >
-              <Route index element={<NavigateToResource resource="articles" />} />
+            <Route element={<AdminLayout />}>
+              <Route index element={<AdminDashboard />} />
               <Route path="articles" element={<ArticleList />} />
               <Route path="articles/new" element={<ArticleEdit mode="create" />} />
               <Route path="articles/:id" element={<ArticleEdit mode="edit" />} />
@@ -66,6 +58,7 @@ export function AdminApp() {
               <Route path="access" element={<AccessSettings />} />
               <Route path="audit" element={<AuditLog />} />
             </Route>
+            <Route path="*" element={<NavigateToResource resource="articles" />} />
           </Routes>
         </Refine>
       </AntdApp>
