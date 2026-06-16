@@ -3,7 +3,7 @@ import { useNavigation, useOne } from "@refinedev/core";
 import { Button, Card, Checkbox, Col, Form, Input, Row, Space, TreeSelect, Typography } from "antd";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router";
-import { addAuditEvent, getArticlesAsync, getImagesAsync, getLessonTreeAsync, setArticlesAsync, setImagesAsync, setLessonTreeAsync } from "../data/storage";
+import { getArticlesAsync, getImagesAsync, getLessonTreeAsync, setArticlesAndLessonTreeAsync, setImagesAsync } from "../data/storage";
 import { summaryFromHtml } from "../shared/html";
 import { htmlToMarkdown, markdownToHtml } from "../shared/markdown";
 import type { Article, LessonTreeNode } from "../shared/types";
@@ -231,12 +231,12 @@ export function ArticleEdit({ mode }: Props) {
       delete article.materialType;
     }
 
-    await setArticlesAsync(record ? articles.map((item) => (item.id === record.id ? article : item)) : [article, ...articles]);
-    if (placement === ARTICLE_PLACEMENT || targetNode) {
-      await setLessonTreeAsync(nextNodes);
-      setLessonTree(nextNodes);
-    }
-    await addAuditEvent(record ? "Обновлен материал" : "Создан материал", article.title);
+    const nextArticles = record ? articles.map((item) => (item.id === record.id ? article : item)) : [article, ...articles];
+    await setArticlesAndLessonTreeAsync(nextArticles, nextNodes, {
+      action: record ? "Обновлен материал" : "Создан материал",
+      detail: article.title,
+    });
+    setLessonTree(nextNodes);
     list("articles");
   };
 

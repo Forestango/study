@@ -72,6 +72,16 @@ function setStoredMeta(images: Record<string, StoredImage>, meta: StoredContentM
   } as unknown as Record<string, StoredImage>;
 }
 
+function createAuditEvent(action: string, detail: string): AuditEvent {
+  return {
+    id: crypto.randomUUID(),
+    action,
+    detail,
+    actor: "Админка",
+    createdAt: new Date().toLocaleString("ru-RU"),
+  };
+}
+
 function cacheState(state: ContentState) {
   localStorage.setItem(ARTICLES_KEY, JSON.stringify(state.articles));
   localStorage.setItem(IMAGES_KEY, JSON.stringify(state.images));
@@ -273,6 +283,29 @@ export async function setLessonTreeAsync(lessonTree: LessonTreeNode[]) {
   await setImagesAsync(setStoredMeta(images, { ...meta, lessonTree }));
 }
 
+export async function setArticlesAndLessonTreeAsync(
+  articles: Article[],
+  lessonTree: LessonTreeNode[],
+  audit?: { action: string; detail: string },
+) {
+  const updateImages = (images: Record<string, StoredImage>) => {
+    const meta = getStoredMeta(images);
+    const auditEvents = audit ? [createAuditEvent(audit.action, audit.detail), ...(meta.auditEvents || [])].slice(0, 200) : meta.auditEvents;
+    return setStoredMeta(images, { ...meta, lessonTree, auditEvents });
+  };
+
+  if (!hasRemoteBackend) {
+    const images = updateImages(getImages());
+    cacheState({ articles, images });
+    dispatchContentEvents();
+    return;
+  }
+
+  const state = await loadRemoteState();
+  await saveRemoteState({ articles, images: updateImages(state.images) });
+  dispatchContentEvents();
+}
+
 export async function getAuditEventsAsync() {
   const images = await getImagesAsync();
   return getStoredMeta(images).auditEvents || [];
@@ -281,13 +314,7 @@ export async function getAuditEventsAsync() {
 export async function addAuditEvent(action: string, detail: string) {
   const images = await getImagesAsync();
   const meta = getStoredMeta(images);
-  const event: AuditEvent = {
-    id: crypto.randomUUID(),
-    action,
-    detail,
-    actor: "Админка",
-    createdAt: new Date().toLocaleString("ru-RU"),
-  };
+  const event = createAuditEvent(action, detail);
   await setImagesAsync(setStoredMeta(images, { ...meta, auditEvents: [event, ...(meta.auditEvents || [])].slice(0, 200) }));
 }
 
