@@ -7,6 +7,7 @@ import { addAuditEvent, getArticlesAsync, getImagesAsync, setArticlesAsync, setI
 import { summaryFromHtml } from "../shared/html";
 import { htmlToMarkdown, markdownToHtml } from "../shared/markdown";
 import type { Article } from "../shared/types";
+import { MarkdownRichEditor } from "./MarkdownRichEditor";
 
 type Props = {
   mode: "create" | "edit";
@@ -36,6 +37,7 @@ export function ArticleEdit({ mode }: Props) {
   });
   const record = result;
   const isLesson = Form.useWatch("isLessonMaterial", form);
+  const markdown = Form.useWatch("markdown", form) || "";
 
   const initialValues = useMemo(
     () =>
@@ -195,8 +197,11 @@ export function ArticleEdit({ mode }: Props) {
           />
         </Form.Item>
 
-        <Form.Item name="markdown" label="Markdown" rules={[{ required: true }]}>
-          <Input.TextArea rows={18} />
+        <Form.Item label="Markdown">
+          <MarkdownRichEditor value={markdown} onChange={(nextMarkdown) => form.setFieldValue("markdown", nextMarkdown)} />
+        </Form.Item>
+        <Form.Item name="markdown" hidden rules={[{ required: true, message: "Заполни материал" }]}>
+          <Input />
         </Form.Item>
 
         <Space>

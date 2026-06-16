@@ -2,14 +2,16 @@ import { Refine } from "@refinedev/core";
 import { RefineThemes, ThemedLayout, ThemedTitle, useNotificationProvider } from "@refinedev/antd";
 import routerProvider, { NavigateToResource } from "@refinedev/react-router";
 import { ConfigProvider, App as AntdApp } from "antd";
+import { lazy } from "react";
 import { Outlet, Route, Routes } from "react-router";
 import { localDataProvider } from "../data/localDataProvider";
 import { AccessSettings } from "./AccessSettings";
-import { ArticleEdit } from "./ArticleEdit";
 import { ArticleList } from "./ArticleList";
 import { AuditLog } from "./AuditLog";
 import { LessonTree } from "./LessonTree";
 import "@refinedev/antd/dist/reset.css";
+
+const ArticleEdit = lazy(() => import("./ArticleEdit").then((module) => ({ default: module.ArticleEdit })));
 
 export function AdminApp() {
   return (
