@@ -1,12 +1,12 @@
 import { Create, Edit } from "@refinedev/antd";
 import { useNavigation, useOne } from "@refinedev/core";
-import { Button, Card, Checkbox, Col, Form, Input, InputNumber, Row, Space } from "antd";
-import { useEffect, useMemo, useRef } from "react";
+import { Button, Card, Checkbox, Col, Form, Input, Row, Space, TreeSelect, Typography } from "antd";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router";
-import { addAuditEvent, getArticlesAsync, getImagesAsync, setArticlesAsync, setImagesAsync } from "../data/storage";
+import { addAuditEvent, getArticlesAsync, getImagesAsync, getLessonTreeAsync, setArticlesAsync, setImagesAsync, setLessonTreeAsync } from "../data/storage";
 import { summaryFromHtml } from "../shared/html";
 import { htmlToMarkdown, markdownToHtml } from "../shared/markdown";
-import type { Article } from "../shared/types";
+import type { Article, LessonTreeNode } from "../shared/types";
 import { MarkdownRichEditor } from "./MarkdownRichEditor";
 
 type Props = {
@@ -14,8 +14,17 @@ type Props = {
 };
 
 type ArticleFormValues = Article & {
-  isLessonMaterial?: boolean;
+  contentPlacement?: string;
 };
+
+type PlacementTreeNode = {
+  title: string;
+  value: string;
+  disabled?: boolean;
+  children?: PlacementTreeNode[];
+};
+
+const ARTICLE_PLACEMENT = "__articles";
 
 const escapeHtml = (value: string) =>
   value
@@ -24,8 +33,46 @@ const escapeHtml = (value: string) =>
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 
+const sortNodes = (nodes: LessonTreeNode[]) => [...nodes].sort((a, b) => a.order - b.order || a.title.localeCompare(b.title));
+
+const getPath = (nodes: LessonTreeNode[], node: LessonTreeNode) => {
+  const path = [node];
+  let current = node;
+  while (current.parentId) {
+    const parent = nodes.find((item) => item.id === current.parentId);
+    if (!parent) break;
+    path.unshift(parent);
+    current = parent;
+  }
+  return path;
+};
+
+const syncArticleFromTree = (article: Article, nodes: LessonTreeNode[]) => {
+  const materialNode = nodes.find((node) => node.type === "material" && node.articleId === article.id);
+  if (!materialNode) return article;
+
+  const path = getPath(nodes, materialNode);
+  const folders = path.filter((node) => node.type === "folder");
+  const lesson = [...path].reverse().find((node) => node.type === "lesson");
+  const inheritedRoles = materialNode.roles || lesson?.roles || article.roles;
+
+  return {
+    ...article,
+    category: "Методики занятий",
+    contentType: "lesson" as const,
+    lessonCourse: folders[0]?.title || "Методики",
+    lessonAge: folders[1]?.title || "Без возраста",
+    lessonId: lesson?.id || article.lessonId || `lesson-${article.id}`,
+    lessonTitle: lesson?.title || article.lessonTitle || article.title,
+    lessonOrder: materialNode.order,
+    materialType: materialNode.title,
+    roles: inheritedRoles?.length ? inheritedRoles : article.roles,
+  };
+};
+
 export function ArticleEdit({ mode }: Props) {
   const [form] = Form.useForm<ArticleFormValues>();
+  const [lessonTree, setLessonTree] = useState<LessonTreeNode[]>([]);
   const markdownFileRef = useRef<HTMLInputElement>(null);
   const imageFileRef = useRef<HTMLInputElement>(null);
   const { id } = useParams();
@@ -36,8 +83,36 @@ export function ArticleEdit({ mode }: Props) {
     queryOptions: { enabled: mode === "edit" && !!id },
   });
   const record = result;
-  const isLesson = Form.useWatch("isLessonMaterial", form);
+  const contentPlacement = Form.useWatch("contentPlacement", form);
   const markdown = Form.useWatch("markdown", form) || "";
+  const isLessonPlacement = contentPlacement && contentPlacement !== ARTICLE_PLACEMENT;
+
+  const currentMaterialNode = useMemo(
+    () => (record ? lessonTree.find((node) => node.type === "material" && node.articleId === record.id) : undefined),
+    [lessonTree, record],
+  );
+
+  const placementOptions = useMemo<PlacementTreeNode[]>(() => {
+    const build = (parentId?: string): PlacementTreeNode[] =>
+      sortNodes(lessonTree.filter((node) => node.parentId === parentId && node.type !== "material")).map((node) => ({
+        title: node.title,
+        value: node.id,
+        children: build(node.id),
+      }));
+
+    return [
+      {
+        title: "Статьи",
+        value: ARTICLE_PLACEMENT,
+      },
+      {
+        title: "Уроки",
+        value: "lessons-root",
+        disabled: true,
+        children: build(),
+      },
+    ];
+  }, [lessonTree]);
 
   const initialValues = useMemo(
     () =>
@@ -46,7 +121,7 @@ export function ArticleEdit({ mode }: Props) {
             ...record,
             bodyFormat: "markdown" as const,
             markdown: record.markdown || htmlToMarkdown(record.html),
-            isLessonMaterial: record.contentType === "lesson" || !!record.lessonId,
+            contentPlacement: currentMaterialNode?.parentId || ARTICLE_PLACEMENT,
           }
         : {
             title: "",
@@ -55,14 +130,24 @@ export function ArticleEdit({ mode }: Props) {
             markdown: "# Название\n\nТекст материала.",
             bodyFormat: "markdown" as const,
             roles: ["owner"] as Article["roles"],
-            isLessonMaterial: false,
+            contentPlacement: ARTICLE_PLACEMENT,
           },
-    [record],
+    [currentMaterialNode, record],
   );
 
   useEffect(() => {
     form.setFieldsValue(initialValues);
   }, [form, initialValues]);
+
+  useEffect(() => {
+    getLessonTreeAsync().then(setLessonTree);
+  }, []);
+
+  useEffect(() => {
+    if (isLessonPlacement && !form.getFieldValue("category")) {
+      form.setFieldValue("category", "Методики занятий");
+    }
+  }, [form, isLessonPlacement]);
 
   const appendMarkdown = (snippet: string) => {
     const currentMarkdown = form.getFieldValue("markdown") || "";
@@ -102,12 +187,14 @@ export function ArticleEdit({ mode }: Props) {
   };
 
   const save = async (values: ArticleFormValues) => {
-    const articles = await getArticlesAsync();
+    const [articles, nodes] = await Promise.all([getArticlesAsync(), getLessonTreeAsync()]);
+    const placement = values.contentPlacement || ARTICLE_PLACEMENT;
+    const targetNode = nodes.find((node) => node.id === placement);
     const html = markdownToHtml(values.markdown || "");
     const article: Article = {
       ...initialValues,
       ...values,
-      contentType: (values as any).isLessonMaterial ? "lesson" : "article",
+      contentType: targetNode ? "lesson" : "article",
       id: record?.id || crypto.randomUUID(),
       updated: new Date().toLocaleDateString("ru-RU"),
       bodyFormat: "markdown",
@@ -116,10 +203,26 @@ export function ArticleEdit({ mode }: Props) {
       summary: summaryFromHtml(html),
       roles: values.roles?.length ? values.roles : ["owner"],
     };
+    delete (article as ArticleFormValues).contentPlacement;
 
-    if ((values as any).isLessonMaterial) {
-      article.lessonId = article.lessonId || `${article.lessonCourse}-${article.lessonAge}-${article.lessonTitle}`.toLowerCase().replace(/[^a-zа-я0-9]+/gi, "-");
+    let nextNodes = nodes.filter((node) => !(node.type === "material" && node.articleId === article.id));
+
+    if (targetNode) {
+      const previousMaterial = nodes.find((node) => node.type === "material" && node.articleId === article.id);
+      const siblings = nextNodes.filter((node) => node.parentId === targetNode.id);
+      const materialNode: LessonTreeNode = {
+        id: previousMaterial?.id || crypto.randomUUID(),
+        parentId: targetNode.id,
+        type: "material",
+        title: article.title,
+        order: previousMaterial?.parentId === targetNode.id ? previousMaterial.order : siblings.length + 1,
+        articleId: article.id,
+        roles: article.roles,
+      };
+      nextNodes = [...nextNodes, materialNode];
+      Object.assign(article, syncArticleFromTree(article, nextNodes));
     } else {
+      article.contentType = "article";
       delete article.lessonId;
       delete article.lessonTitle;
       delete article.lessonCourse;
@@ -129,6 +232,10 @@ export function ArticleEdit({ mode }: Props) {
     }
 
     await setArticlesAsync(record ? articles.map((item) => (item.id === record.id ? article : item)) : [article, ...articles]);
+    if (placement === ARTICLE_PLACEMENT || targetNode) {
+      await setLessonTreeAsync(nextNodes);
+      setLessonTree(nextNodes);
+    }
     await addAuditEvent(record ? "Обновлен материал" : "Создан материал", article.title);
     list("articles");
   };
@@ -145,45 +252,32 @@ export function ArticleEdit({ mode }: Props) {
             </Form.Item>
           </Col>
           <Col span={12}>
-            <Form.Item name="category" label="Раздел" rules={[{ required: true }]}>
+            <Form.Item name="category" label="Раздел" rules={[{ required: !isLessonPlacement }]}>
               <Input />
             </Form.Item>
           </Col>
         </Row>
 
-        <Card size="small" title="Привязка к уроку" style={{ marginBottom: 16 }}>
-          <Form.Item name="isLessonMaterial" valuePropName="checked">
-            <Checkbox>Это материал урока</Checkbox>
-          </Form.Item>
-          {isLesson && (
-            <Row gutter={16}>
-              <Col span={8}>
-                <Form.Item name="lessonCourse" label="Курс">
-                  <Input />
-                </Form.Item>
-              </Col>
-              <Col span={8}>
-                <Form.Item name="lessonAge" label="Возраст">
-                  <Input />
-                </Form.Item>
-              </Col>
-              <Col span={8}>
-                <Form.Item name="lessonTitle" label="Урок">
-                  <Input />
-                </Form.Item>
-              </Col>
-              <Col span={8}>
-                <Form.Item name="materialType" label="Тип материала">
-                  <Input />
-                </Form.Item>
-              </Col>
-              <Col span={8}>
-                <Form.Item name="lessonOrder" label="Порядок">
-                  <InputNumber min={1} style={{ width: "100%" }} />
-                </Form.Item>
-              </Col>
-            </Row>
-          )}
+        <Card size="small" title="Место публикации" style={{ marginBottom: 16 }}>
+          <Row gutter={16}>
+            <Col span={14}>
+              <Form.Item name="contentPlacement" label="Куда сохранить материал" rules={[{ required: true }]}>
+                <TreeSelect
+                  treeData={placementOptions}
+                  treeDefaultExpandAll
+                  placeholder="Выберите раздел"
+                  style={{ width: "100%" }}
+                  treeNodeFilterProp="title"
+                  showSearch
+                />
+              </Form.Item>
+            </Col>
+            <Col span={10}>
+              <Typography.Paragraph className="muted" style={{ marginTop: 30, marginBottom: 0 }}>
+                {isLessonPlacement ? "Материал появится в выбранной ветке дерева уроков." : "Материал будет отдельной статьей портала."}
+              </Typography.Paragraph>
+            </Col>
+          </Row>
         </Card>
 
         <Form.Item name="roles" label="Доступы">
