@@ -1,12 +1,12 @@
 import { Create, Edit } from "@refinedev/antd";
 import { useNavigation, useOne } from "@refinedev/core";
-import { Button, Card, Checkbox, Col, Form, Input, Row, Space, TreeSelect, Typography } from "antd";
+import { Button, Card, Checkbox, Col, Form, Input, Row, Select, Space, TreeSelect, Typography } from "antd";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router";
-import { getArticlesAsync, getImagesAsync, getLessonTreeAsync, setArticlesAndLessonTreeAsync, setImagesAsync } from "../data/storage";
+import { getArticlesAsync, getImagesAsync, getLessonTreeAsync, getStoredFilesAsync, setArticlesAndLessonTreeAsync, setImagesAsync, setStoredFilesAsync } from "../data/storage";
 import { summaryFromHtml } from "../shared/html";
 import { htmlToMarkdown, markdownToHtml } from "../shared/markdown";
-import type { Article, LessonTreeNode } from "../shared/types";
+import type { Article, LessonTreeNode, StoredFile } from "../shared/types";
 import { MarkdownRichEditor } from "./MarkdownRichEditor";
 
 type Props = {
@@ -73,6 +73,7 @@ const syncArticleFromTree = (article: Article, nodes: LessonTreeNode[]) => {
 export function ArticleEdit({ mode }: Props) {
   const [form] = Form.useForm<ArticleFormValues>();
   const [lessonTree, setLessonTree] = useState<LessonTreeNode[]>([]);
+  const [storedFiles, setStoredFiles] = useState<StoredFile[]>([]);
   const markdownFileRef = useRef<HTMLInputElement>(null);
   const imageFileRef = useRef<HTMLInputElement>(null);
   const { id } = useParams();
@@ -113,15 +114,24 @@ export function ArticleEdit({ mode }: Props) {
       },
     ];
   }, [lessonTree]);
+  const fileOptions = useMemo(
+    () => storedFiles.map((file) => ({ label: file.name, value: file.id })),
+    [storedFiles],
+  );
 
   const initialValues = useMemo(
-    () =>
-      record
+    () => {
+      const linkedFileIds = record
+        ? Array.from(new Set([...(record.fileIds || []), ...storedFiles.filter((file) => file.articleIds.includes(record.id)).map((file) => file.id)]))
+        : [];
+
+      return record
         ? {
             ...record,
             bodyFormat: "markdown" as const,
             markdown: record.markdown || htmlToMarkdown(record.html),
             contentPlacement: currentMaterialNode?.parentId || ARTICLE_PLACEMENT,
+            fileIds: linkedFileIds,
           }
         : {
             title: "",
@@ -131,8 +141,10 @@ export function ArticleEdit({ mode }: Props) {
             bodyFormat: "markdown" as const,
             roles: ["owner"] as Article["roles"],
             contentPlacement: ARTICLE_PLACEMENT,
-          },
-    [currentMaterialNode, record],
+            fileIds: [],
+          };
+    },
+    [currentMaterialNode, record, storedFiles],
   );
 
   useEffect(() => {
@@ -141,6 +153,7 @@ export function ArticleEdit({ mode }: Props) {
 
   useEffect(() => {
     getLessonTreeAsync().then(setLessonTree);
+    getStoredFilesAsync().then(setStoredFiles);
   }, []);
 
   useEffect(() => {
@@ -236,6 +249,18 @@ export function ArticleEdit({ mode }: Props) {
       action: record ? "Обновлен материал" : "Создан материал",
       detail: article.title,
     });
+    const selectedFileIds = new Set(article.fileIds || []);
+    const nextFiles = storedFiles.map((file) => {
+      const articleIds = new Set(file.articleIds);
+      if (selectedFileIds.has(file.id)) {
+        articleIds.add(article.id);
+      } else {
+        articleIds.delete(article.id);
+      }
+      return { ...file, articleIds: Array.from(articleIds) };
+    });
+    await setStoredFilesAsync(nextFiles);
+    setStoredFiles(nextFiles);
     setLessonTree(nextNodes);
     list("articles");
   };
@@ -290,6 +315,22 @@ export function ArticleEdit({ mode }: Props) {
             ]}
           />
         </Form.Item>
+
+        <Card size="small" title="Файлы к материалу" style={{ marginBottom: 16 }}>
+          <Form.Item name="fileIds" label="Прикрепить из библиотеки">
+            <Select
+              mode="multiple"
+              allowClear
+              showSearch
+              options={fileOptions}
+              optionFilterProp="label"
+              placeholder="Презентации, архивы, распечатки"
+            />
+          </Form.Item>
+          <Typography.Paragraph className="muted" style={{ marginBottom: 0 }}>
+            Новые файлы добавляются в разделе “Файлы”, здесь выбираем какие показать в конце материала.
+          </Typography.Paragraph>
+        </Card>
 
         <Form.Item label="Markdown">
           <MarkdownRichEditor value={markdown} onChange={(nextMarkdown) => form.setFieldValue("markdown", nextMarkdown)} />

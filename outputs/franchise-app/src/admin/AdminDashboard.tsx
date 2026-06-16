@@ -1,19 +1,21 @@
 import { Button, Card, Col, Row, Space, Statistic, Timeline, Typography } from "antd";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
-import { getArticlesAsync, getAuditEventsAsync, getLessonTreeAsync, isLessonArticle } from "../data/storage";
-import type { Article, AuditEvent, LessonTreeNode } from "../shared/types";
+import { getArticlesAsync, getAuditEventsAsync, getLessonTreeAsync, getStoredFilesAsync, isLessonArticle } from "../data/storage";
+import type { Article, AuditEvent, LessonTreeNode, StoredFile } from "../shared/types";
 
 export function AdminDashboard() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [nodes, setNodes] = useState<LessonTreeNode[]>([]);
   const [events, setEvents] = useState<AuditEvent[]>([]);
+  const [files, setFiles] = useState<StoredFile[]>([]);
 
   useEffect(() => {
-    Promise.all([getArticlesAsync(), getLessonTreeAsync(), getAuditEventsAsync()]).then(([nextArticles, nextNodes, nextEvents]) => {
+    Promise.all([getArticlesAsync(), getLessonTreeAsync(), getAuditEventsAsync(), getStoredFilesAsync()]).then(([nextArticles, nextNodes, nextEvents, nextFiles]) => {
       setArticles(nextArticles);
       setNodes(nextNodes);
       setEvents(nextEvents);
+      setFiles(nextFiles);
     });
   }, []);
 
@@ -22,9 +24,9 @@ export function AdminDashboard() {
       articles: articles.filter((article) => !isLessonArticle(article)).length,
       lessons: nodes.filter((node) => node.type === "lesson").length,
       materials: nodes.filter((node) => node.type === "material").length,
-      branches: nodes.filter((node) => node.type === "folder").length,
+      files: files.length,
     }),
-    [articles, nodes],
+    [articles, files, nodes],
   );
 
   return (
@@ -65,7 +67,7 @@ export function AdminDashboard() {
         </Col>
         <Col xs={24} sm={12} xl={6}>
           <Card>
-            <Statistic title="Ветки дерева" value={stats.branches} />
+            <Statistic title="Файлы" value={stats.files} />
           </Card>
         </Col>
       </Row>
@@ -84,6 +86,10 @@ export function AdminDashboard() {
             <div>
               <strong>3. Доступы</strong>
               <span>Проверить роли для материала или всей ветки.</span>
+            </div>
+            <div>
+              <strong>4. Файлы</strong>
+              <span>Прикрепить презентации, архивы и распечатки к нужным занятиям.</span>
             </div>
           </Card>
         </Col>

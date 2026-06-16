@@ -8,20 +8,30 @@ import {
   getImagesAsync,
   getLessonTreeAsync,
   getStorageStatus,
+  getStoredFilesAsync,
   isLessonArticle,
   renderStoredImages,
 } from "../data/storage";
 import { sanitizeHtml } from "../shared/html";
-import type { Article, LessonTreeNode } from "../shared/types";
+import type { Article, LessonTreeNode, Role, StoredFile } from "../shared/types";
 
 const basePath = import.meta.env.BASE_URL === "/" ? "" : import.meta.env.BASE_URL.replace(/\/$/, "");
 const withBasePath = (path: string) => `${basePath}${path}`;
+const currentPortalRole = (localStorage.getItem("franchisePortalRole") || "owner") as Role;
+const canSeeProtectionState = currentPortalRole === "owner";
+
+const formatFileSize = (size: number) => {
+  if (size < 1024 * 1024) return `${Math.max(1, Math.round(size / 1024))} КБ`;
+  return `${(size / 1024 / 1024).toFixed(1)} МБ`;
+};
 
 export function PortalApp() {
   const [articles, setArticles] = useState(() => getArticles());
   const [lessonTree, setLessonTree] = useState<LessonTreeNode[]>([]);
   const [, refreshImages] = useState(0);
+  const [files, setFiles] = useState<StoredFile[]>([]);
   const [storageStatus, setStorageStatus] = useState(() => getStorageStatus());
+  const [copyState, setCopyState] = useState<"idle" | "copied">("idle");
   const initialHashId = new URLSearchParams(window.location.hash.replace(/^#/, "")).get("article") || undefined;
   const initialHashArticle = articles.find((item) => item.id === initialHashId);
   const [mode, setMode] = useState<"articles" | "lessons">(initialHashArticle && isLessonArticle(initialHashArticle) ? "lessons" : "articles");
@@ -79,6 +89,9 @@ export function PortalApp() {
         .map((node) => ({ node, article: articleById.get(node.articleId!) }))
         .filter((item): item is { node: LessonTreeNode; article: Article } => Boolean(item.article))
     : [];
+  const selectedFiles = selectedArticle
+    ? files.filter((file) => file.articleIds.includes(selectedArticle.id) || selectedArticle.fileIds?.includes(file.id))
+    : [];
 
   useEffect(() => {
     const openFromHash = () => {
@@ -100,7 +113,8 @@ export function PortalApp() {
       setStorageStatus(getStorageStatus());
     };
     const refreshStoredImages = async () => {
-      await getImagesAsync();
+      const [, nextFiles] = await Promise.all([getImagesAsync(), getStoredFilesAsync()]);
+      setFiles(nextFiles);
       refreshImages((value) => value + 1);
       setStorageStatus(getStorageStatus());
     };
@@ -132,12 +146,12 @@ export function PortalApp() {
   useEffect(() => {
     const prevent = (event: Event) => {
       const target = event.target as HTMLElement | null;
-      if (target?.matches("input, textarea")) return;
+      if (target?.closest("input, textarea, button, a")) return;
       event.preventDefault();
     };
     const keydown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
-      if (target?.matches("input, textarea")) return;
+      if (target?.closest("input, textarea, button, a")) return;
       if ((event.metaKey || event.ctrlKey) && ["a", "c", "x", "s", "p", "u"].includes(event.key.toLowerCase())) {
         event.preventDefault();
       }
@@ -157,7 +171,22 @@ export function PortalApp() {
   const copyLink = async () => {
     if (!selectedArticle) return;
     const url = `${window.location.origin}${withBasePath(`/portal#article=${encodeURIComponent(selectedArticle.id)}`)}`;
-    await navigator.clipboard?.writeText(url).catch(() => window.prompt("Ссылка на материал", url));
+    setCopyState("copied");
+    window.setTimeout(() => setCopyState("idle"), 1800);
+    window.setTimeout(() => {
+      const fallback = () => {
+        const textarea = document.createElement("textarea");
+        textarea.value = url;
+        textarea.setAttribute("readonly", "");
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        textarea.remove();
+      };
+      navigator.clipboard?.writeText(url).catch(fallback) || fallback();
+    });
   };
 
   const renderLessonNodes = (parentId?: string, depth = 0): React.ReactNode =>
@@ -231,11 +260,17 @@ export function PortalApp() {
             <>
               <div className="reader-actions">
                 <div className="shield-strip">
-                  <span>Копирование отключено</span>
-                  <span>Печать отключена</span>
+                  {canSeeProtectionState && (
+                    <>
+                      <span>Копирование отключено</span>
+                      <span>Печать отключена</span>
+                    </>
+                  )}
                   {selectedPath.length > 1 && <span>{selectedPath.slice(0, -1).map((node) => node.title).join(" · ")}</span>}
                 </div>
-                <button onClick={copyLink}>Скопировать ссылку</button>
+                <button className="copy-link-button" type="button" onClick={copyLink}>
+                  {copyState === "copied" ? "Ссылка скопирована" : "Скопировать ссылку"}
+                </button>
               </div>
               {selectedLessonNode && (
                 <header className="lesson-head">
@@ -253,6 +288,20 @@ export function PortalApp() {
                 </header>
               )}
               <div dangerouslySetInnerHTML={{ __html: renderStoredImages(sanitizeHtml(selectedArticle.html)) }} />
+              {!!selectedFiles.length && (
+                <section className="reader-files">
+                  <h2>Файлы к материалу</h2>
+                  <div>
+                    {selectedFiles.map((file) => (
+                      <a key={file.id} href={file.src} download={file.name}>
+                        <strong>{file.name}</strong>
+                        <span>{file.description || "Скачать файл"}</span>
+                        <small>{formatFileSize(file.size)}</small>
+                      </a>
+                    ))}
+                  </div>
+                </section>
+              )}
             </>
           ) : (
             <p>Материал не выбран.</p>

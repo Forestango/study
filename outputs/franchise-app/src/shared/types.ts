@@ -20,6 +20,17 @@ export type AuditEvent = {
   createdAt: string;
 };
 
+export type StoredFile = {
+  id: string;
+  name: string;
+  description?: string;
+  mimeType: string;
+  size: number;
+  src: string;
+  articleIds: string[];
+  createdAt: string;
+};
+
 export type Article = {
   id: string;
   title: string;
@@ -38,6 +49,7 @@ export type Article = {
   lessonAge?: string;
   lessonOrder?: number;
   materialType?: string;
+  fileIds?: string[];
 };
 
 export type LessonGroup = {

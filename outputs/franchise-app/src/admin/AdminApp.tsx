@@ -10,6 +10,7 @@ import { AdminDashboard } from "./AdminDashboard";
 import { AdminLayout } from "./AdminLayout";
 import { ArticleList } from "./ArticleList";
 import { AuditLog } from "./AuditLog";
+import { FileLibrary } from "./FileLibrary";
 import { LessonTree } from "./LessonTree";
 import "@refinedev/antd/dist/reset.css";
 
@@ -37,6 +38,11 @@ export function AdminApp() {
               meta: { label: "Дерево уроков" },
             },
             {
+              name: "files",
+              list: "/admin/files",
+              meta: { label: "Файлы" },
+            },
+            {
               name: "access",
               list: "/admin/access",
               meta: { label: "Права доступа" },
@@ -55,6 +61,7 @@ export function AdminApp() {
               <Route path="articles/new" element={<ArticleEdit mode="create" />} />
               <Route path="articles/:id" element={<ArticleEdit mode="edit" />} />
               <Route path="lessons" element={<LessonTree />} />
+              <Route path="files" element={<FileLibrary />} />
               <Route path="access" element={<AccessSettings />} />
               <Route path="audit" element={<AuditLog />} />
             </Route>

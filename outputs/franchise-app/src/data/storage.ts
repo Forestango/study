@@ -1,4 +1,4 @@
-import type { Article, AuditEvent, LessonTreeNode } from "../shared/types";
+import type { Article, AuditEvent, LessonTreeNode, StoredFile } from "../shared/types";
 import { seedArticles } from "./seed";
 
 const ARTICLES_KEY = "franchiseArticles";
@@ -23,6 +23,7 @@ type ContentState = {
 type StoredContentMeta = {
   lessonTree?: LessonTreeNode[];
   auditEvents?: AuditEvent[];
+  files?: StoredFile[];
 };
 
 function readCachedArticles(): Article[] {
@@ -326,6 +327,30 @@ export async function addAuditEvent(action: string, detail: string) {
   const meta = getStoredMeta(images);
   const event = createAuditEvent(action, detail);
   await setImagesAsync(setStoredMeta(images, { ...meta, auditEvents: [event, ...(meta.auditEvents || [])].slice(0, 200) }));
+}
+
+export async function getStoredFilesAsync() {
+  const images = await getImagesAsync();
+  return getStoredMeta(images).files || [];
+}
+
+export async function setStoredFilesAsync(files: StoredFile[], audit?: { action: string; detail: string }) {
+  const updateImages = (images: Record<string, StoredImage>) => {
+    const meta = getStoredMeta(images);
+    const auditEvents = audit ? [createAuditEvent(audit.action, audit.detail), ...(meta.auditEvents || [])].slice(0, 200) : meta.auditEvents;
+    return setStoredMeta(images, { ...meta, files, auditEvents });
+  };
+
+  if (!hasRemoteBackend) {
+    const images = updateImages(getImages());
+    cacheState({ articles: getArticles(), images });
+    dispatchContentEvents();
+    return;
+  }
+
+  const state = await loadRemoteState();
+  await saveRemoteState({ articles: state.articles, images: updateImages(state.images) });
+  dispatchContentEvents();
 }
 
 export function renderStoredImages(html: string) {

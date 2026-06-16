@@ -10,6 +10,7 @@ const navGroups = [
       { to: "/admin/articles", label: "Материалы" },
       { to: "/admin/articles/new", label: "Новый материал" },
       { to: "/admin/lessons", label: "Дерево уроков" },
+      { to: "/admin/files", label: "Файлы" },
     ],
   },
   {
