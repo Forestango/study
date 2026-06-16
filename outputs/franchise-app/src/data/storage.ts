@@ -39,6 +39,16 @@ function mergeArticles(remoteArticles: Article[], localArticles: Article[]) {
   return Array.from(byId.values());
 }
 
+function mergeImages(remoteImages: Record<string, StoredImage>, localImages: Record<string, StoredImage>) {
+  const { [META_KEY]: remoteMeta, ...remoteFiles } = remoteImages as Record<string, StoredImage>;
+  const { [META_KEY]: localMeta, ...localFiles } = localImages as Record<string, StoredImage>;
+  return {
+    ...remoteFiles,
+    ...localFiles,
+    ...(remoteMeta || localMeta ? { [META_KEY]: remoteMeta || localMeta } : {}),
+  } as Record<string, StoredImage>;
+}
+
 function markRemoteConnected(detail = "Supabase sync is active") {
   remoteStatus = "connected";
   remoteStatusDetail = detail;
@@ -120,7 +130,7 @@ async function loadRemoteState(): Promise<ContentState> {
 
     if (row?.articles?.length) {
       const mergedArticles = mergeArticles(row.articles, localArticles);
-      const mergedImages = { ...(row.images || {}), ...localImages };
+      const mergedImages = mergeImages(row.images || {}, localImages);
       const state = {
         articles: mergedArticles,
         images: mergedImages,
